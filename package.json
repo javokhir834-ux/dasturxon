@@ -1,0 +1,13 @@
+{
+  "name": "dasturxon-pos",
+  "version": "0.7.0",
+  "description": "Restoran boshqaruv tizimi (POS) — 5-etap",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

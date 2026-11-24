@@ -1,0 +1,15 @@
+# Dasturxon — HTTPS sertifikati avtomatik (Let's Encrypt)
+__DOMAIN__ {
+	encode gzip
+	reverse_proxy 127.0.0.1:8080 {
+		# Real-time (SSE) uchun buferlashni o'chirish
+		flush_interval -1
+	}
+	header -Server
+	log {
+		output file /var/log/caddy/dasturxon.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+	}
+}

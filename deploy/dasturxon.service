@@ -1,0 +1,23 @@
+[Unit]
+Description=Dasturxon POS (bulut)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dasturxon
+Group=dasturxon
+WorkingDirectory=/opt/dasturxon
+ExecStart=/usr/bin/node /opt/dasturxon/server.js
+Restart=always
+RestartSec=3
+Environment=NODE_ENV=production
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/dasturxon
+ReadOnlyPaths=/opt/dasturxon
+
+[Install]
+WantedBy=multi-user.target
