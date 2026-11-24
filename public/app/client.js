@@ -127,6 +127,7 @@ async function loadQuote() {
   const prepay = online ? q.total : pol.prepay_amount;
   box.innerHTML = `<div class="sum"><div class="r"><span>Taomlar</span><span class="num">${som(q.subtotal)}</span></div>
       <div class="r"><span>Yetkazib berish</span><span class="num">${q.delivery_fee ? som(q.delivery_fee) : 'bepul'}</span></div>
+      ${q.debt ? `<div class="r" style="color:var(--warn)"><span>Oldingi olinmagan buyurtma qarzi</span><span class="num">${som(q.debt)}</span></div>` : ''}
       <div class="r b"><span>Jami</span><span class="num">${som(q.total)}</span></div></div>
     ${!q.min_ok ? `<div class="note danger" style="margin-top:10px">Minimal buyurtma: ${som(q.min_order)}. Yana ${som(q.min_order - q.subtotal)} qo'shing.</div>` : ''}
     ${!q.open ? `<div class="note danger" style="margin-top:10px">Joy hozir buyurtma qabul qilmayapti.</div>` : ''}
@@ -193,12 +194,58 @@ async function viewOrder(id, silent) {
     ${o.status === 'awaiting_payment' ? `<button class="btn primary block" style="margin-bottom:12px" data-a="go" data-v="#pay/${o.id}">To'lovni yakunlash · ${som(o.prepay_amount)}</button>` : ''}
     ${idx >= 0 ? `<div class="panel"><ul class="tl">${steps.map(([k, n, t], i) => `<li class="${i < idx ? 'done' : i === idx ? 'cur done' : ''}">${n}${t && i <= idx ? ` <span class="muted small">${hhmm(t)}</span>` : ''}</li>`).join('')}</ul></div>` : ''}
     <div class="panel"><h3>Tarkibi</h3>${o.items.map((i) => `<div class="line"><span class="grow">${esc(i.name)} × ${i.qty}</span><b class="num">${money((i.price + (i.mod_price || 0)) * i.qty)}</b></div>`).join('')}
-      <div class="sum" style="margin-top:8px"><div class="r"><span>Yetkazib berish</span><span>${o.delivery_fee ? som(o.delivery_fee) : 'bepul'}</span></div><div class="r b"><span>Jami</span><span>${som(o.total)}</span></div></div>
+      <div class="sum" style="margin-top:8px"><div class="r"><span>Yetkazib berish</span><span>${o.delivery_fee ? som(o.delivery_fee) : 'bepul'}</span></div>${o.debt_amount ? `<div class="r"><span>Oldingi qarz</span><span>${som(o.debt_amount)}</span></div>` : ''}<div class="r b"><span>Jami</span><span>${som(o.total)}</span></div></div>
       ${payNote ? `<div class="note ${payNote[0]}" style="margin-top:10px">${esc(payNote[1])}</div>` : ''}
       ${cash > 0 && !['cancelled', 'rejected', 'no_show', 'delivered'].includes(o.status) ? `<div class="muted small" style="margin-top:8px">Kuryerga naqd: <b>${som(cash)}</b></div>` : ''}</div>
     <div class="panel"><div class="muted small">📍 ${esc(o.address)}${o.note ? `<br>💬 ${esc(o.note)}` : ''}</div></div>
+    ${claimBox(o)}
     ${['awaiting_payment', 'new'].includes(o.status) ? `<button class="btn danger block" data-a="ocancel" data-id="${o.id}">Buyurtmani bekor qilish</button>` : ''}</div>`, silent);
   return o;
+}
+
+// ---------- 8-etap: shikoyat (nizo) ----------
+const CLAIM_CAT = [['missing', 'Taom yetishmaydi'], ['wrong', 'Boshqa taom keldi'], ['damaged', 'Paket ochilgan / shikastlangan'], ['cold', 'Taom sovuq / sifatsiz'], ['late', 'Juda kech keldi'],
+  ['not_delivered', 'Buyurtma kelmadi'], ['rude', "Qo'pol muomala"], ['payment', "To'lov muammosi"], ['other', 'Boshqa']];
+const CLAIM_ST = { open: ["Ko'rib chiqilmoqda", 'warn'], resolved: ['Hal qilindi', 'ok'], rejected: ['Rad etildi', 'danger'] };
+function claimBox(o) {
+  const c = o.claim;
+  if (!c) return o.can_claim ? `<button class="btn block" style="margin-bottom:12px" data-a="go" data-v="#claim/${o.id}">⚠️ Buyurtmada muammo bormi?</button>` : '';
+  const st = CLAIM_ST[c.status] || [c.status, ''];
+  return `<div class="panel"><div class="row"><h3 class="grow" style="margin:0">Shikoyat #${c.id}</h3><span class="chip ${st[1]}">${st[0]}</span></div>
+    <div class="muted small" style="margin-top:6px">${esc(c.category_name)} · ${dt(c.created_at)}</div><div class="small">${esc(c.text)}</div>
+    ${c.status !== 'open' ? `<div class="note ${c.compensation ? 'ok' : ''}" style="margin-top:10px">${esc(c.resolution)}${c.compensation ? `<br><b>${som(c.compensation)}</b> sizga qaytariladi (1–3 ish kuni).` : ''}</div>`
+      : `<textarea id="cnote" rows="2" maxlength="1000" placeholder="Qo'shimcha ma'lumot" style="margin-top:10px"></textarea>
+      <div class="row" style="margin-top:8px;gap:8px"><button class="btn sm" data-a="cphoto">📷 Rasm</button><span class="muted small grow" id="cph"></span><button class="btn sm primary" data-a="claimNote" data-id="${c.id}">Yuborish</button></div>`}</div>`;
+}
+function viewClaim(id) {
+  S.claimPhoto = null; S.claimCat = null;
+  view(topbar('Muammo haqida', '#order/' + id) + `<div class="csec"><div class="panel"><h3>Nima bo'ldi?</h3>
+    <div class="opts">${CLAIM_CAT.map(([k, n]) => `<button class="opt" data-a="ccat" data-v="${k}"><i></i>${n}</button>`).join('')}</div>
+    <label>Batafsil yozing</label><textarea id="ctext" rows="3" maxlength="1000" placeholder="Masalan: 2 ta somsa o'rniga 1 ta keldi"></textarea>
+    <label>Qancha summaga zarar ko'rdingiz? (ixtiyoriy)</label><input id="camount" type="number" inputmode="numeric" placeholder="0">
+    <div class="row" style="margin-top:10px;gap:8px"><button class="btn sm" data-a="cphoto">📷 Rasm qo'shish</button><span class="muted small" id="cph"></span></div>
+    <p class="muted small">Rasm (taom, paket, chek) shikoyatni tezroq hal qilishga yordam beradi. Platforma restoran va kuryer isbotlarini ham ko'rib chiqadi.</p></div>
+    <button class="btn primary block" data-a="claim" data-id="${id}" style="min-height:52px">Shikoyat yuborish</button></div>`);
+}
+// Rasm: telefonda galereya/kamera → 1200 px JPEG
+function pickPhoto() {
+  return new Promise((resolve) => {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+    inp.onchange = () => {
+      const f = inp.files[0]; if (!f) return resolve(null);
+      const fr = new FileReader(), im = new Image();
+      fr.onload = () => { im.src = fr.result; };
+      im.onload = () => {
+        const k = Math.min(1, 1200 / Math.max(im.width, im.height)), c = document.createElement('canvas');
+        c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        let q = 0.75, d = c.toDataURL('image/jpeg', q); while (d.length > 650000 && q > 0.3) { q -= 0.15; d = c.toDataURL('image/jpeg', q); }
+        resolve(d);
+      };
+      im.onerror = () => { toast("Rasmni o'qib bo'lmadi", true); resolve(null); };
+      fr.readAsDataURL(f);
+    };
+    inp.click();
+  });
 }
 
 function courierBox(o) {
@@ -223,11 +270,12 @@ function route() {
   if (h === '#login') return viewLogin();
   if (h === '#orders') return viewOrders();
   if ((m = /^#pay\/(\d+)$/.exec(h))) return viewPay(m[1]);
+  if ((m = /^#claim\/(\d+)$/.exec(h))) { if (!S.token) { S.after = h; return go('#login'); } return viewClaim(m[1]); }
   if ((m = /^#order\/(\d+)$/.exec(h))) {
     if (!S.token) { S.after = h; return go('#login'); }
     viewOrder(m[1]);
     const id = m[1];
-    S.poll = setInterval(async () => { if (document.hidden || location.hash !== '#order/' + id || document.activeElement?.tagName === 'INPUT') return; await viewOrder(id, true); }, 5000);
+    S.poll = setInterval(async () => { if (document.hidden || location.hash !== '#order/' + id || ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) || S.claimPhoto) return; await viewOrder(id, true); }, 5000);
     return;
   }
   return viewHome();
@@ -308,6 +356,20 @@ const A = {
   rate: async (el) => {
     if (!S.stars) return toast('Yulduzchani tanlang', true);
     if (await run(() => api('POST', `/api/c/orders/${el.dataset.id}/rate`, { stars: S.stars, comment: $('#rcm').value }))) { toast('Rahmat!'); S.stars = 0; route(); }
+  },
+  ccat: (el) => { S.claimCat = el.dataset.v; document.querySelectorAll('[data-a="ccat"]').forEach((b) => b.classList.toggle('on', b === el)); },
+  cphoto: async () => { const d = await pickPhoto(); if (d) { S.claimPhoto = d; $('#cph').textContent = "✓ Rasm qo'shildi"; } },
+  claim: async (el) => {
+    if (!S.claimCat) return toast('Muammo turini tanlang', true);
+    const text = $('#ctext').value.trim(); if (text.length < 3) { $('#ctext').focus(); return toast('Muammoni yozing', true); }
+    el.disabled = true;
+    const r = await run(() => api('POST', `/api/c/orders/${el.dataset.id}/claim`, { category: S.claimCat, text, amount: Number($('#camount').value) || 0, ...(S.claimPhoto ? { photo: S.claimPhoto } : {}) }));
+    el.disabled = false;
+    if (r) { S.claimCat = null; S.claimPhoto = null; toast("Shikoyat yuborildi. Javobni shu yerda ko'rasiz"); go('#order/' + el.dataset.id); }
+  },
+  claimNote: async (el) => {
+    const text = $('#cnote').value.trim(); if (!text && !S.claimPhoto) return toast("Matn yozing yoki rasm qo'shing", true);
+    if (await run(() => api('POST', `/api/c/claims/${el.dataset.id}/note`, { text, ...(S.claimPhoto ? { photo: S.claimPhoto } : {}) }))) { S.claimPhoto = null; toast('Yuborildi'); route(); }
   },
   ocancel: async (el) => {
     if (!confirm('Buyurtmani bekor qilamizmi?')) return;

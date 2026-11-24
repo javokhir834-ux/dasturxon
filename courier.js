@@ -110,9 +110,11 @@ module.exports = function courier(ctx) {
   ext.publicExtra = (o) => ({ courier: ext.courierOf(o), handover_code: o.courier_id && ['accepted', 'ready', 'on_way'].includes(o.status) ? o.handover_code : undefined, can_rate: o.status === 'delivered' && !!o.courier_id && !o.courier_rating });
 
   // ======================= KURYER: KIRISH VA RO'YXAT =======================
-  route('POST', '/api/k/otp', null, async ({ body }) => { const phone = phoneNorm(body.phone); return otpSend('k' + phone, phone); });
+  const notDenied = (phone) => { if (ext.denied('courier', phone)) fail(403, "Hisobingiz bloklangan. Platforma bilan bog'laning"); };
+  route('POST', '/api/k/otp', null, async ({ body }) => { const phone = phoneNorm(body.phone); notDenied(phone); return otpSend('k' + phone, phone); });
   route('POST', '/api/k/login', null, ({ body }) => {
     const phone = phoneNorm(body.phone);
+    notDenied(phone);
     otpCheck('k' + phone, body.code);
     let c = db.prepare('SELECT * FROM couriers WHERE phone=?').get(phone);
     if (!c) { db.prepare('INSERT INTO couriers (phone, created_at) VALUES (?,?)').run(phone, now()); c = db.prepare('SELECT * FROM couriers WHERE phone=?').get(phone); }
@@ -295,7 +297,10 @@ module.exports = function courier(ctx) {
     touch(o.id, { courier_status: 'no_show' });
     move(c.id, 'fee', o.courier_fee, o.id, "Mijoz olmadi — yo'l haqi");
     const prepaidFee = Math.max(0, (o.payment_status === 'paid' ? o.paid_amount : 0) - o.subtotal);
-    if (prepaidFee < o.courier_fee) db.prepare('INSERT INTO fund_moves (amount,order_id,note,at) VALUES (?,?,?,?)').run(-(o.courier_fee - prepaidFee), o.id, "Mijoz olmadi — kuryer haqi fonddan", now());
+    if (prepaidFee < o.courier_fee) {
+      db.prepare('INSERT INTO fund_moves (amount,order_id,note,at) VALUES (?,?,?,?)').run(-(o.courier_fee - prepaidFee), o.id, "Mijoz olmadi — kuryer haqi fonddan", now());
+      if (o.app_user_id) db.prepare('UPDATE app_users SET debt=debt+? WHERE id=?').run(o.courier_fee - prepaidFee, o.app_user_id); // 8-etap: keyingi buyurtmada undiriladi
+    }
     db.prepare('UPDATE couriers SET no_shows=no_shows+1 WHERE id=?').run(c.id);
     if (!isReplica(o.business_id)) await finish(getRow(o.id), 'no_show');
     ping(o);

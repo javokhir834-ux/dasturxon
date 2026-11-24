@@ -208,9 +208,40 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 - Push xabar (ilova yopiq bo'lsa ham taklif) — PWA/Telegram bot orqali keyin.
 - Kuryerga avtomatik to'lov (karta) — hozir platforma qo'lda.
 
-## 8-etap rejasi (keyingi) — Platforma admin
-- Hisob-kitob: restoranga to'lanadigan summa (onlayn tushum + kuryer naqdi − komissiya), davr bo'yicha akt, to'landi belgisi; kuryer hisob-kitobi.
-- Nizolar: mijoz/restoran/kuryer shikoyati, isbotlar (`delivery_photos`, GPS, holat vaqtlari), aybdor jadvali, mijozga darhol kompensatsiya (fonddan) va aybdordan undirish,
-  kuryerga bosqichli choralar (ogohlantirish → jarima → blok), e'tiroz huquqi.
-- `refund_due` ni boshqarish (qaytarildi belgisi, Payme/Click cancel), mijoz qarzi (no-show), umumiy qora ro'yxat (telefon), firibgarlik belgilari.
-- Platforma statistikasi: buyurtmalar, GMV, komissiya, kuryerlar samaradorligi.
+## 8-etapda qilingan
+- Fayllar: `platform.js` (server), `public/platadmin.js` (platforma bo'limlari), `tests/platform.js` (64 test). `public/platform.js` — bo'limlar menyusi (`nav`), ichki yordamchilar eksport qilinadi.
+  Mijoz ilovasi: shikoyat ekrani `#claim/:id`, qarz qatori. Kuryer ilovasi: "Hisob" da nizolar, e'tiroz, muammo bildirish; blok ekranida e'tiroz. POS "Yetkazish": xavf belgisi, hisob-kitob va nizolar bloki (menejer/admin), ⚠️ shikoyat tugmasi.
+- **Hisob-kitob (akt):** restoran ulushi = taom (+ o'zi yetkazgan bo'lsa yetkazish narxi) − komissiya − restoran o'zi olgan naqd ± tuzatishlar.
+  No-show: oldindan to'langan bo'lsa restoran taom pulini oladi (komissiya bilan), aks holda 0. Akt sanagacha yakunlangan buyurtmalarni oladi (`delivery_orders.settlement_id`),
+  to'landi / bekor (faqat ochiq). Qo'lda tuzatish (±). Restoran o'z aktlarini POS da ko'radi (`/api/delivery/settlements`, MANAGE).
+- **Mijoz qarzi:** platforma kuryeri bilan naqd buyurtmada mijoz olmasa — fonddan to'langan kuryer haqi `app_users.debt` ga yoziladi; keyingi buyurtmaga qo'shiladi (`debt_amount`), to'liq oldindan to'lov;
+  to'langach qarz yopiladi va fondga qaytadi. POS chekiga qarz kirmaydi.
+- **Nizolar:** mijoz (yakunlangandan keyin `dispute_days`=2 kun ichida, bitta), restoran (kuryer/mijoz/platformaga), kuryer (restoran/mijozga; blokdan e'tiroz) ochadi.
+  Isbotlar: plomba/eshik rasmlari + GPS, tomonlar rasmlari va izohlari (`dispute_notes`), vaqt chizig'i, mijoz va kuryer xavf belgilari.
+  Qaror: aybdor (restoran/kuryer/mijoz/platforma/hech kim), mijozga **darhol kompensatsiya fonddan** (`refunds` ro'yxatiga), aybdordan undirish (restoran → keyingi aktda ushlanadi, kuryer → jarima) → fondga.
+  Kuryerga bosqichli chora (90 kunda aybi): 1 → ogohlantirish, 2 → jarima (`dispute_fine`=20 000), 3 → blok; qo'lda tanlash mumkin.
+  **E'tiroz:** aybdor restoran/kuryer `appeal_days`=3 kun ichida bir marta; qabul qilinsa undirish, jarima, blok qaytariladi (mijoz kompensatsiyasi qoladi).
+  Mijoz asossiz shikoyatda aybdor bo'lsa `false_claims`+1, 3 ta → avtomatik qora ro'yxat.
+- **Qaytarishlar:** `refund_due` buyurtmalar (summa = to'langan − qarz) va nizo kompensatsiyalari; Payme/Click kabinetidan qaytarib, panelda belgilanadi.
+- **Qora ro'yxat** (`blacklist`, telefon + tur): mijoz/kuryer kira olmaydi, SMS ham yuborilmaydi, sessiyalar o'chadi. **Xavf belgilari:** mijoz (olmagan, qarz, asossiz shikoyat, ko'p shikoyat,
+  kompensatsiya >30%, ko'p bekor), kuryer (no-show ulushi ≥15%, voz kechish, nizolarda aybdor, past reyting). Restoran doskasida yangi buyurtmada mijoz xavfi ko'rinadi.
+- **Statistika:** buyurtmalar, GMV, komissiya, o'rtacha chek, kuryer to'lovlari, fond, qaytarishlar, nizolar, yangi mijozlar, vaqtlar (jami/tayyorlash/kutish/yo'l), kunlar, bizneslar, kuryerlar samaradorligi.
+- **Platforma jurnali** (`platform_log`): akt, to'lov, nizo qarori, e'tiroz, qora ro'yxat, qaytarish.
+- Yangi jadvallar: `settlements`, `biz_adjustments`, `disputes`, `dispute_notes`, `refunds`, `blacklist`, `platform_log`. Ustunlar: `app_users.debt/false_claims`, `delivery_orders.debt_amount/settlement_id`.
+  Sozlamalar: `dispute_days`, `appeal_days`, `dispute_fine`. Lokal serverli restoran nizolarni bulutdagi nusxadan yozadi (`/api/delivery/disputes` mirror cheklovidan ozod).
+- Testlar: hammasi yashil — flow 39, office 23, staff 29, tenant 34, sync 26, delivery 55, delivery_sync 18, courier 67, platform 64. Brauzerda platforma, mijoz, kuryer, POS ekranlari xatosiz.
+
+### 8-etap qarorlari
+- Kafolat fondi manfiyga tushishi mumkin (platforma qoplaydi) — statistikada qizil ko'rinadi.
+- Kompensatsiya faqat pul qaytarish (keshbek/promokod emas). Qaytarish qo'lda belgilanadi.
+- Mijoz shikoyatida aybdor oldindan tanlanmaydi — platforma xodimi isbotlarga qarab tanlaydi.
+
+### 8-etap ochiq qolganlari
+- Restoranga va kuryerga avtomatik pul o'tkazish (bank/marketplace shartnomasi) — hozir akt + qo'lda to'lov.
+- Payme/Click orqali avtomatik qaytarish (merchant hisobi kerak).
+- Nizo bo'yicha SMS/push xabar — SMS provayder ulanganda.
+- Oferta: kompensatsiya, undirish va qora ro'yxat qoidalari yurist bilan yozilishi kerak.
+- Ko'p filialli ega uchun barcha filiallar aktlari bir joyda (ega kabineti) — keyin.
+
+## 9-etap rejasi (keyingi)
+- Dorixona (faqat retseptsiz, litsenziya va yurist xulosasidan keyin), do'konlar (og'irlik/dona, almashtirish), kechki chegirma moduli (ortgan taom).

@@ -27,6 +27,9 @@ const PLATFORM_UI = (() => {
   const H = {}; // harakatlar
   const bind = () => { $('#app').onclick = (e) => { const el = e.target.closest('[data-p]'); if (el && H[el.dataset.p]) { e.preventDefault(); H[el.dataset.p](el); } }; };
   const back = '<a class="btn sm" href="#" data-p="toPos">← POS ga</a>';
+  // 8-etap: platforma bo'limlari (harakatlari platadmin.js da)
+  const NAV = [['platBiz', 'Bizneslar'], ['platCouriers', '🛵 Kuryerlar'], ['platStats', '📊 Statistika'], ['platSettle', '💰 Hisob-kitob'], ['platDisputes', '⚖️ Nizolar'], ['platRefunds', '↩️ Qaytarish'], ['platRisk', "🚫 Qora ro'yxat"]];
+  const nav = (act) => `${back}<nav class="pnav">${NAV.map(([k, n]) => `<button class="btn sm ${k === act ? 'primary' : ''}" data-p="${k}">${n}</button>`).join('')}</nav>`;
   H.toPos = () => { document.body.classList.remove('scroll'); history.replaceState(null, '', location.pathname); boot(); };
 
   // ---------- Ro'yxatdan o'tish ----------
@@ -152,7 +155,7 @@ const PLATFORM_UI = (() => {
     catch (e) { return toast(e.message, true); }
     const cnt = (s) => list.filter((b) => b.pos.status === s).length;
     const month = ymd(new Date()).slice(0, 7);
-    shell('Platforma paneli', `${back}<button class="btn sm primary" data-p="platCouriers">🛵 Kuryerlar</button><button class="btn sm" data-p="platSettings">Sozlamalar</button><button class="btn sm" data-p="platLogout">Chiqish</button>`, `
+    shell('Platforma paneli', `${nav('platBiz')}<button class="btn sm" data-p="platSettings">Sozlamalar</button><button class="btn sm" data-p="platLogout">Chiqish</button>`, `
       <div class="grid-stats"><div class="stat"><div class="muted small">Bizneslar</div><div class="v">${list.length}</div></div>
         <div class="stat"><div class="muted small">To'lagan (faol)</div><div class="v" style="color:var(--accent)">${cnt('active')}</div></div>
         <div class="stat"><div class="muted small">Sinovda</div><div class="v">${cnt('trial')}</div></div>
@@ -215,13 +218,16 @@ const PLATFORM_UI = (() => {
       <div><label>Kuryer minimal haqi (so'm)</label><input name="courier_min_fee" type="number" value="${st.courier_min_fee ?? 8000}"></div>
       <div><label>Taklifga javob vaqti (soniya)</label><input name="offer_seconds" type="number" value="${st.offer_seconds ?? 30}"></div>
       <div><label>Kuryer qidirish radiusi (km)</label><input name="dispatch_radius_km" type="number" value="${st.dispatch_radius_km ?? 7}"></div>
-      <div><label>Sinov davri (buyurtma)</label><input name="probation_orders" type="number" value="${st.probation_orders ?? 20}"></div></div>
+      <div><label>Sinov davri (buyurtma)</label><input name="probation_orders" type="number" value="${st.probation_orders ?? 20}"></div>
+      <div><label>Shikoyat muddati (kun)</label><input name="dispute_days" type="number" value="${st.dispute_days ?? 2}"></div>
+      <div><label>E'tiroz muddati (kun)</label><input name="appeal_days" type="number" value="${st.appeal_days ?? 3}"></div>
+      <div><label>Kuryer jarimasi (2-ayb, so'm)</label><input name="dispute_fine" type="number" value="${st.dispute_fine ?? 20000}"></div></div>
       <p class="muted small">Komissiya taom summasidan olinadi va yangi buyurtmalarga qo'llanadi.</p>
       <label>Yangi parol (o'zgartirmaslik uchun bo'sh)</label><input name="new_password" type="password">
       <div class="foot"><button class="btn" data-m="close">Bekor</button><button class="btn primary" data-m="ok">Saqlash</button></div>`);
     if (!v) return;
     try { await papi('ptoken', 'POST', '/api/platform/settings', { price_pos: Number(v.price_pos), price_delivery: Number(v.price_delivery), trial_days: Number(v.trial_days), grace_days: Number(v.grace_days), commission_percent: Number(v.commission_percent),
-      ...Object.fromEntries(['fund_percent', 'courier_min_fee', 'offer_seconds', 'dispatch_radius_km', 'probation_orders'].map((k) => [k, Number(v[k])])), ...(v.new_password ? { new_password: v.new_password } : {}) }); platform(); toast('Saqlandi'); }
+      ...Object.fromEntries(['fund_percent', 'courier_min_fee', 'offer_seconds', 'dispatch_radius_km', 'probation_orders', 'dispute_days', 'appeal_days', 'dispute_fine'].map((k) => [k, Number(v[k])])), ...(v.new_password ? { new_password: v.new_password } : {}) }); platform(); toast('Saqlandi'); }
     catch (e) { toast(e.message, true); }
   };
 
@@ -234,7 +240,7 @@ const PLATFORM_UI = (() => {
     let list, fund;
     try { [list, fund] = await Promise.all([papi('ptoken', 'GET', '/api/platform/couriers'), papi('ptoken', 'GET', '/api/platform/fund')]); } catch (e) { return toast(e.message, true); }
     const n = (f) => list.filter(f).length;
-    shell('Kuryerlar', `${back}<button class="btn sm" data-p="platBiz">Bizneslar</button><button class="btn sm" data-p="platCouriers">Yangilash</button>`, `
+    shell('Kuryerlar', nav('platCouriers'), `
       <div class="grid-stats"><div class="stat"><div class="muted small">Tekshiruvda</div><div class="v" style="color:var(--warn)">${n((c) => c.status === 'pending')}</div></div>
         <div class="stat"><div class="muted small">Ishlayotgan</div><div class="v">${n((c) => ['probation', 'active'].includes(c.status))}</div></div>
         <div class="stat"><div class="muted small">Hozir liniyada</div><div class="v" style="color:var(--accent)">${n((c) => c.online)}</div></div>
@@ -281,5 +287,5 @@ const PLATFORM_UI = (() => {
     if (hash === '#owner') return owner();
     if (hash === '#platform') return platform();
   }
-  return { route };
+  return { route, papi, shell, bind, nav, H, CST };
 })();

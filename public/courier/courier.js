@@ -66,7 +66,8 @@ async function refresh() {
   S.st = st;
   if (st.me.online || st.order) startGeo(); else stopGeo();
   if (newOffer) { S.offerSeen = st.offer.id; S.offerTotal = Math.max(5, (new Date(st.offer.expires) - Date.now()) / 1000); try { navigator.vibrate?.([300, 150, 300]); } catch {} }
-  if (document.activeElement?.tagName === 'INPUT' && !newOffer) return; // kod yozilayotganda ekranni buzmaymiz
+  // kod/matn yozilayotganda va "Hisob" sahifasida ekranni buzmaymiz (faqat yangi taklif kelsa)
+  if (!newOffer && (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || $('#bapp')?.value || (S.tab === 'history' && st.me.status !== 'blocked'))) return;
   render();
 }
 function startPoll() { clearInterval(S.poll); S.poll = setInterval(() => { if (!document.hidden) refresh(); }, 3000); }
@@ -81,7 +82,9 @@ function render() {
   if (me.status === 'pending') return (a.innerHTML = head('Kuryer', logoutBtn()) + `<div class="empty"><div class="ic">⏳</div><h2>Arizangiz tekshirilmoqda</h2>
     <p>Hujjatlaringizni platforma xodimi ko'rib chiqadi (odatda 1 ish kuni). Tasdiqlangach shu yerda ishni boshlaysiz.</p>
     <p class="muted small">Depozit topshirsangiz, naqd to'lovli buyurtmalar ham keladi.</p></div>`);
-  if (me.status === 'blocked') return (a.innerHTML = head('Kuryer', logoutBtn()) + `<div class="empty"><div class="ic">⛔</div><h2>Hisobingiz bloklangan</h2><p>${esc(me.status_reason)}</p><p class="muted small">E'tiroz bildirish uchun platforma bilan bog'laning.</p></div>`);
+  if (me.status === 'blocked') return (a.innerHTML = head('Kuryer', logoutBtn()) + `<div class="empty"><div class="ic">⛔</div><h2>Hisobingiz bloklangan</h2><p>${esc(me.status_reason)}</p>
+    <div class="panel" style="text-align:left"><h3>E'tiroz bildirish</h3><textarea id="bapp" rows="3" maxlength="1000" placeholder="Nega blokdan chiqarish kerakligini yozing"></textarea>
+    <button class="btn primary block" style="margin-top:8px" data-a="blockAppeal">Yuborish</button></div></div>`);
   if (S.tab === 'history') return viewHistory(a);
   if (S.tab === 'rules') return viewRules(a);
   viewMain(a);
@@ -200,12 +203,27 @@ setInterval(() => { const t = $('#nstimer'); if (!t) return; const l = Math.max(
 async function viewHistory(a) {
   const me = S.st.me;
   a.innerHTML = head('Hisob') + '<div class="empty">Yuklanmoqda…</div>' + tabs();
-  const h = await api('GET', '/api/k/history').catch(() => ({ orders: [], moves: [] }));
+  const [h, ds] = await Promise.all([api('GET', '/api/k/history').catch(() => ({ orders: [], moves: [] })), api('GET', '/api/k/disputes').catch(() => [])]);
   const TN = { fee: "Yetkazish haqi", bonus: 'Bonus', cash: 'Naqd olindi', cash_in: 'Naqd topshirildi', payout: "Sizga to'landi", penalty: 'Jarima', deposit: 'Depozit', note: 'Izoh' };
+  const PARTY = { customer: 'Mijoz', restaurant: 'Restoran', courier: 'Siz', platform: 'Platforma', none: 'hech kim' };
+  const DST = { open: ["Ko'rib chiqilmoqda", 'warn'], resolved: ['Hal qilindi', 'ok'], rejected: ['Rad etildi', ''] };
+  const MEAS = { warn: 'ogohlantirish', fine: 'jarima', block: 'blok', unblock: 'blokdan chiqarildi' };
+  const disputes = `<div class="panel"><h3>Shikoyat va nizolar</h3>${ds.map((d) => `<div class="line" style="align-items:flex-start"><div class="grow">
+      <div><b>#${d.id}</b> ${d.order_id ? `· buyurtma #${d.order_id} ` : ''}· ${PARTY[d.opened_by]}${d.against ? ' → ' + PARTY[d.against] : ''} <span class="chip ${DST[d.status]?.[1] || ''}">${d.appeal_status === 'open' ? "E'tiroz ko'rilmoqda" : DST[d.status]?.[0] || d.status}</span></div>
+      <div class="muted small">${esc(d.category_name)}: ${esc(d.text)}</div>
+      ${d.status !== 'open' ? `<div class="small">Qaror: aybdor — ${PARTY[d.guilty] || '—'}${d.measure ? `, ${MEAS[d.measure]}` : ''}${d.recover && d.appeal_status !== 'accepted' ? `, undirildi ${som(d.recover)}` : ''}. ${esc(d.resolution)}${d.guilty !== 'courier' ? '' : d.appeal_status === 'accepted' ? " <b>E'tirozingiz qabul qilindi.</b>" : d.appeal_status === 'rejected' ? " E'tiroz rad etildi." : ''}</div>` : ''}
+      <div class="row" style="gap:6px;margin-top:6px">${d.status === 'open' || d.appeal_status === 'open' ? `<button class="btn sm" data-a="dNote" data-id="${d.id}">Javob yozish</button>` : ''}${d.can_appeal ? `<button class="btn sm primary" data-a="dAppeal" data-id="${d.id}">E'tiroz bildirish</button>` : ''}</div>
+    </div></div>`).join('') || '<div class="muted small">Nizo yo\'q</div>'}
+    ${h.orders.length ? `<details style="margin-top:10px"><summary class="small">⚠️ Muammo bildirish (restoran yoki mijoz)</summary>
+      <select id="dOrder">${h.orders.map((o) => `<option value="${o.id}">#${o.id} · ${esc(o.place || '')}</option>`).join('')}</select>
+      <select id="dAgainst"><option value="restaurant">Restoranga</option><option value="customer">Mijozga</option></select>
+      <select id="dCat"><option value="restaurant_delay">Restoran kechiktirdi</option><option value="damaged">Paket ochiq / shikastlangan edi</option><option value="customer_abuse">Mijoz bilan muammo</option><option value="payment">To'lov / naqd muammosi</option><option value="other">Boshqa</option></select>
+      <textarea id="dText" rows="2" maxlength="1000" placeholder="Nima bo'ldi?"></textarea><button class="btn sm primary block" data-a="dOpen">Yuborish</button></details>` : ''}</div>`;
   a.innerHTML = head('Hisob') + `<div class="csec"><div class="kstats">
     <div class="stat"><div class="muted small">Platforma sizga qarzdor</div><div class="v">${som(Math.max(0, me.balance))}</div></div>
     <div class="stat"><div class="muted small">Siz topshirasiz</div><div class="v" style="color:var(--warn)">${som(Math.max(0, -me.balance))}</div></div></div>
     <p class="muted small">Naqdni har kuni (24 soat ichida) topshiring. Daromad hisob-kitobda to'lanadi.</p>
+    ${disputes}
     <div class="panel"><h3>Harakatlar</h3>${h.moves.map((m) => `<div class="line"><div class="grow"><div>${TN[m.type] || m.type}${m.order_id ? ` · #${m.order_id}` : ''}</div><div class="muted small">${dt(m.at)} ${esc(m.note)}</div></div><b class="num" style="color:${m.amount < 0 ? 'var(--warn)' : 'var(--accent)'}">${m.amount > 0 ? '+' : ''}${money(m.amount)}</b></div>`).join('') || '<div class="muted">—</div>'}</div>
     <div class="panel"><h3>Buyurtmalar</h3>${h.orders.map((o) => `<div class="line"><div class="grow"><div>#${o.id} · ${esc(o.place || '')}</div><div class="muted small">${dt(o.delivered_at || o.updated_at)} · ${o.status === 'delivered' ? 'yetkazildi' : 'mijoz olmadi'}${o.courier_rating ? ` · ⭐${o.courier_rating}` : ''}</div></div><b class="num">${money(o.courier_fee)}</b></div>`).join('') || '<div class="muted">—</div>'}</div>
     <button class="btn block" data-a="logout">Chiqish</button></div>${tabs()}`;
@@ -286,6 +304,17 @@ const A = {
     if (!confirm("Mijoz buyurtmani olmadi deb belgilaymizmi? Taom sizda qoladi.")) return;
     const r = await run(() => api('POST', `/api/k/orders/${el.dataset.id}/noshow`));
     if (r) toast(`Belgilandi. Yo'l haqingiz +${som(r.fee)}`); refresh();
+  },
+  // 8-etap: nizolar
+  dNote: async (el) => { const text = prompt('Javobingiz (isbot, tushuntirish):'); if (text && (await run(() => api('POST', `/api/k/disputes/${el.dataset.id}/note`, { text })))) { toast('Yuborildi'); render(); } },
+  dAppeal: async (el) => { const text = prompt("E'tirozingizni yozing (faqat bir marta):"); if (text && (await run(() => api('POST', `/api/k/disputes/${el.dataset.id}/appeal`, { text })))) { toast("E'tiroz yuborildi"); render(); } },
+  dOpen: async () => {
+    const text = $('#dText').value.trim(); if (text.length < 3) return toast("Muammoni yozing", true);
+    if (await run(() => api('POST', '/api/k/disputes', { order_id: Number($('#dOrder').value), against: $('#dAgainst').value, category: $('#dCat').value, text }))) { toast('Yuborildi'); render(); }
+  },
+  blockAppeal: async () => {
+    const text = $('#bapp').value.trim(); if (text.length < 10) return toast('Batafsilroq yozing', true);
+    if (await run(() => api('POST', '/api/k/disputes', { category: 'block_appeal', text }))) { $('#bapp').value = ''; toast("E'tirozingiz platformaga yuborildi"); }
   },
   release: async (el) => {
     const reason = prompt('Nega voz kechyapsiz? (bu hisobga olinadi)'); if (reason == null) return;

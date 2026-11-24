@@ -67,10 +67,11 @@ function dcard(o) {
   }[o.status] || '';
   return `<div class="dcard ${o.status}"><div class="row"><b>D-${o.id}</b><span class="muted small num" data-since="${o.created_at}">${ago(o.created_at)}</span><div class="grow"></div>${eta ? `<span class="chip">⏱ ${eta}</span>` : ''}</div>
     <div class="small" style="margin:6px 0">👤 ${esc(o.name || 'Mijoz')} · <a href="tel:+${esc(o.phone)}">${fmtPhoneD(o.phone)}</a></div>
+    ${(o.risk || []).length ? `<div style="margin-bottom:4px">${o.risk.map((r) => `<span class="chip warn risk">⚠ ${esc(r)}</span>`).join('')}</div>` : ''}
     <div class="small muted">📍 ${esc(o.address || '')}${mapLink(o)}</div>
     ${o.note ? `<div class="small" style="margin-top:4px">💬 ${esc(o.note)}</div>` : ''}
     <div class="ditems">${o.items.map((i) => `<div class="r"><span>${esc(i.name)}${i.comment ? ` <i class="muted">(${esc(i.comment)})</i>` : ''}</span><b>× ${i.qty}</b></div>`).join('')}</div>
-    <div class="row wrap" style="gap:6px"><b class="num">${som(o.total)}</b><div class="grow"></div>${payInfo(o)}</div>${cline}
+    <div class="row wrap" style="gap:6px"><b class="num">${som(o.total - (o.debt_amount || 0))}</b><div class="grow"></div>${payInfo(o)}</div>${cline}
     <div class="row wrap dact">${actions}</div></div>`;
 }
 const fmtPhoneD = (p) => (p && p.length === 12 ? `+${p.slice(0, 3)} ${p.slice(3, 5)} ${p.slice(5, 8)} ${p.slice(8, 10)} ${p.slice(10)}` : esc(p || ''));
@@ -90,9 +91,77 @@ async function viewDelivery(main) {
     <div class="panel" style="margin-top:14px"><div class="row"><h3 style="margin:0">Bugun yakunlanganlar</h3><div class="grow"></div><span class="muted">Yetkazildi: <b>${done.filter((o) => o.status === 'delivered').length}</b> ta · ${som(sum)}</span></div>
       <table class="list" style="margin-top:8px"><tr><th>#</th><th>Vaqt</th><th>Mijoz</th><th>Holat</th><th>To'lov</th><th class="right">Summa</th></tr>
       ${done.map((o) => `<tr><td>D-${o.id}</td><td class="muted">${hhmm(o.created_at)}</td><td>${esc(o.name || '')} <span class="muted small">${fmtPhoneD(o.phone)}</span></td>
-        <td><span class="chip ${DST[o.status]?.[1] || ''}">${DST[o.status]?.[0] || o.status}</span>${o.reject_reason ? ` <span class="muted small">${esc(o.reject_reason)}</span>` : ''}</td><td>${payInfo(o)}</td><td class="right num">${money(o.total)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">Hali yo\'q</td></tr>'}</table></div>`;
+        <td><span class="chip ${DST[o.status]?.[1] || ''}">${DST[o.status]?.[0] || o.status}</span>${o.reject_reason ? ` <span class="muted small">${esc(o.reject_reason)}</span>` : ''}</td><td>${payInfo(o)}</td>
+        <td class="right num">${money(o.total - (o.debt_amount || 0))}${can('admin', 'menejer') && ['delivered', 'no_show'].includes(o.status) ? ` <button class="btn sm ghost" title="Shikoyat" data-a="dDispute" data-id="${o.id}" data-c="${o.courier_id ? 1 : 0}">⚠️</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">Hali yo\'q</td></tr>'}</table></div>
+    ${can('admin', 'menejer') ? '<div id="dplat"></div>' : ''}`;
+  if (can('admin', 'menejer')) renderPlatBlock();
 }
 VIEWS.delivery = viewDelivery;
+
+// ---------- 8-etap: platforma bilan hisob-kitob va shikoyatlar (menejer/admin) ----------
+const DPARTY = { customer: 'Mijoz', restaurant: 'Restoran', courier: 'Kuryer', platform: 'Platforma', none: 'hech kim' };
+async function renderPlatBlock() {
+  const [st, ds] = await Promise.all([api('GET', '/api/delivery/settlements').catch(() => null), api('GET', '/api/delivery/disputes').catch(() => [])]);
+  const box = $('#dplat'); if (!box || !st) return;
+  const u = st.unsettled, ACT = { open: ['To\'lanmagan', 'warn'], paid: ["To'langan", 'ok'] };
+  const DS = { open: ["Ko'rib chiqilmoqda", 'warn'], resolved: ['Hal qilindi', 'ok'], rejected: ['Rad etildi', ''] };
+  box.innerHTML = `<div class="row wrap" style="align-items:flex-start;margin-top:14px;gap:14px">
+    <div class="panel grow" style="min-width:320px;margin:0"><h3>Platforma bilan hisob-kitob</h3>
+      <div class="row wrap" style="gap:22px"><div><div class="muted small">Aktga kirmagan buyurtmalar</div><b>${u.orders}</b></div><div><div class="muted small">Taom</div><b class="num">${money(u.food)}</b></div>
+        <div><div class="muted small">Komissiya ${st.commission_percent}%</div><b class="num">${money(u.commission)}</b></div><div><div class="muted small">O'zimiz olgan naqd</div><b class="num">${money(u.own_cash)}</b></div>
+        <div><div class="muted small">Tuzatishlar</div><b class="num">${money(u.adjustments)}</b></div><div><div class="muted small">${u.payable >= 0 ? 'Platforma sizga to\'laydi' : "Siz platformaga to'laysiz"}</div><b class="num" style="color:var(--${u.payable >= 0 ? 'accent' : 'warn'})">${money(Math.abs(u.payable))}</b></div></div>
+      <table class="list" style="margin-top:10px"><tr><th>Akt</th><th>Davr oxiri</th><th class="right">Buyurtma</th><th class="right">Summa</th><th>Holat</th><th></th></tr>
+        ${st.acts.map((a) => `<tr><td>#${a.id}</td><td>${esc(a.date_to)}</td><td class="right">${a.orders}</td><td class="right num">${money(a.payable)}</td><td><span class="chip ${ACT[a.status]?.[1] || ''}">${ACT[a.status]?.[0] || a.status}</span></td><td class="right"><button class="btn sm" data-a="dActOpen" data-id="${a.id}">Ochish</button></td></tr>`).join('') || '<tr><td colspan="6" class="muted">Hali akt yo\'q</td></tr>'}</table></div>
+    <div class="panel grow" style="min-width:320px;margin:0"><h3>Shikoyat va nizolar</h3>
+      ${ds.map((d) => `<div class="line" style="align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)"><div class="grow"><div><b>#${d.id}</b> · D-${d.order_id ?? '—'} · ${DPARTY[d.opened_by]}${d.against ? ' → ' + DPARTY[d.against] : ''} <span class="chip ${DS[d.status]?.[1] || ''}">${d.appeal_status === 'open' ? "E'tiroz ko'rilmoqda" : DS[d.status]?.[0]}</span></div>
+        <div class="small"><b>${esc(d.category_name)}</b>: ${esc(d.text)}${d.amount ? ` · da'vo ${som(d.amount)}` : ''}</div>
+        ${d.status !== 'open' ? `<div class="small muted">Qaror: aybdor — ${DPARTY[d.guilty] || '—'}${d.recover && d.appeal_status !== 'accepted' ? `, sizdan ${som(d.recover)} ushlanadi` : ''}. ${esc(d.resolution)}${d.guilty !== 'restaurant' ? '' : d.appeal_status === 'accepted' ? " E'tirozingiz qabul qilindi." : d.appeal_status === 'rejected' ? " E'tirozingiz rad etildi." : ''}</div>` : ''}
+        <div class="row" style="gap:6px;margin-top:6px">${d.status === 'open' || d.appeal_status === 'open' ? `<button class="btn sm" data-a="dDNote" data-id="${d.id}">Javob / isbot</button>` : ''}${d.can_appeal ? `<button class="btn sm primary" data-a="dDAppeal" data-id="${d.id}">E'tiroz bildirish</button>` : ''}</div></div></div>`).join('') || '<div class="muted small">Shikoyat yo\'q</div>'}</div></div>`;
+}
+// Rasm (ixtiyoriy isbot) — modal ichidagi fayl tanlash, ≈1200 px JPEG
+const photoInput = () => `<label>Rasm (ixtiyoriy)</label><input type="file" accept="image/*" data-photo>`;
+const readPhoto = (file) => new Promise((resolve) => {
+  if (!file) return resolve('');
+  const fr = new FileReader(), im = new Image();
+  fr.onload = () => { im.src = fr.result; };
+  im.onload = () => { const k = Math.min(1, 1200 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); resolve(c.toDataURL('image/jpeg', 0.7)); };
+  im.onerror = () => resolve('');
+  fr.readAsDataURL(file);
+});
+let pickedPhoto = null;
+document.addEventListener('change', (e) => { if (e.target.matches('input[data-photo]')) pickedPhoto = e.target.files[0] || null; });
+A.dDispute = async (el) => {
+  pickedPhoto = null;
+  const v = await modal(`<h2>D-${el.dataset.id} · shikoyat</h2><label>Kimga nisbatan</label><select name="against">${el.dataset.c === '1' ? '<option value="courier">Kuryerga</option>' : ''}<option value="customer">Mijozga</option><option value="platform">Platformaga</option></select>
+    <label>Muammo</label><select name="category"><option value="rude">Qo'pol muomala</option><option value="late">Kuryer kech keldi</option><option value="damaged">Paket shikastlangan</option><option value="customer_abuse">Mijoz bilan muammo</option><option value="payment">To'lov muammosi</option><option value="other">Boshqa</option></select>
+    <label>Tavsif</label><input name="text" maxlength="1000">${photoInput()}
+    <p class="muted small">Platforma isbotlarni (rasm, GPS, vaqtlar) ko'rib chiqib qaror chiqaradi.</p><div class="foot"><button class="btn" data-m="close">Bekor</button><button class="btn primary" data-m="ok">Yuborish</button></div>`);
+  if (!v) return;
+  const photo = await readPhoto(pickedPhoto);
+  if (await run(() => api('POST', '/api/delivery/disputes', { order_id: Number(el.dataset.id), against: v.against, category: v.category, text: v.text, ...(photo ? { photo } : {}) }))) { toast('Shikoyat yuborildi'); renderPlatBlock(); }
+};
+A.dDNote = async (el) => {
+  pickedPhoto = null;
+  const v = await modal(`<h2>Nizo #${el.dataset.id} — javob</h2><label>Izoh / tushuntirish</label><input name="text" maxlength="1000">${photoInput()}
+    <div class="foot"><button class="btn" data-m="close">Bekor</button><button class="btn primary" data-m="ok">Yuborish</button></div>`);
+  if (!v) return;
+  const photo = await readPhoto(pickedPhoto);
+  if (await run(() => api('POST', `/api/delivery/disputes/${el.dataset.id}/note`, { text: v.text, ...(photo ? { photo } : {}) }))) { toast('Yuborildi'); renderPlatBlock(); }
+};
+A.dDAppeal = async (el) => {
+  const v = await modal(`<h2>Nizo #${el.dataset.id} — e'tiroz</h2><p class="muted small">E'tiroz faqat bir marta bildiriladi. Isbotlaringizni yozing (kamera yozuvi, chek va h.k.).</p><label>E'tiroz</label><input name="text" maxlength="1000">
+    <div class="foot"><button class="btn" data-m="close">Bekor</button><button class="btn primary" data-m="ok">Yuborish</button></div>`);
+  if (v && (await run(() => api('POST', `/api/delivery/disputes/${el.dataset.id}/appeal`, { text: v.text })))) { toast("E'tiroz yuborildi"); renderPlatBlock(); }
+};
+A.dActOpen = async (el) => {
+  const a = await run(() => api('GET', `/api/delivery/settlements/${el.dataset.id}`)); if (!a) return;
+  modal(`<h2>Akt #${a.id}</h2><div class="muted small">${esc(a.date_to)} gacha${a.paid_at ? ` · to'langan ${dt(a.paid_at)} (${esc(a.method)})` : ''}</div>
+    <table class="list" style="margin-top:10px"><tr><th>Buyurtma</th><th class="right">Taom</th><th class="right">Komissiya</th><th class="right">Naqd (o'zimiz)</th><th class="right">Ulush</th></tr>
+    ${a.lines.map((l) => `<tr><td>D-${l.id} <span class="muted small">${l.status === 'delivered' ? 'yetkazildi' : 'olinmadi'}</span></td><td class="right num">${money(l.food)}</td><td class="right num">${money(l.commission)}</td><td class="right num">${money(l.own_cash)}</td><td class="right num">${money(l.net)}</td></tr>`).join('')}
+    ${a.adj.map((x) => `<tr><td colspan="4">${esc(x.reason)}</td><td class="right num">${money(x.amount)}</td></tr>`).join('')}
+    <tr><td colspan="4"><b>${a.payable >= 0 ? "Platforma sizga to'laydi" : "Siz platformaga to'laysiz"}</b></td><td class="right num"><b>${money(Math.abs(a.payable))}</b></td></tr></table>
+    <div class="foot"><button class="btn" onclick="window.print()">Chop etish</button><button class="btn primary" data-m="close">Yopish</button></div>`, { wide: true });
+};
 
 const dAct = (path, body) => (el) => run(async () => {
   el.disabled = true;

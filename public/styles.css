@@ -232,3 +232,10 @@ label.chk input { width: 20px; height: 20px; flex: none; }
 .docs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
 .docs figure { margin: 0; } .docs img { width: 100%; height: 120px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); cursor: zoom-in; }
 .docs figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; }
+/* 8-etap: platforma admin */
+.pnav { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.hbar { display: grid; grid-template-columns: 52px 1fr 150px; align-items: center; gap: 10px; margin: 4px 0; }
+.hbar .track { height: 12px; background: var(--card2); border-radius: 6px; overflow: hidden; } .hbar .track div { height: 100%; background: var(--accent); border-radius: 6px; }
+.note-line { padding: 10px 12px; border-radius: 10px; background: var(--card2); border: 1px solid var(--line); margin-top: 8px; }
+.ptl { list-style: none; margin: 6px 0 0; padding: 0; } .ptl li { padding: 2px 0 2px 16px; position: relative; } .ptl li::before { content: '•'; position: absolute; left: 2px; color: var(--accent); }
+.risk { display: inline-block; margin: 2px 4px 0 0; }

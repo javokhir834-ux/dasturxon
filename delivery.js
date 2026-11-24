@@ -36,13 +36,16 @@ module.exports = function delivery(ctx) {
     'assigned_at TEXT', 'picked_at TEXT', 'arrived_at TEXT', 'call_at TEXT', 'courier_fee INTEGER DEFAULT 0', 'courier_rating INTEGER', "rating_comment TEXT DEFAULT ''",
     'own_delivery INTEGER DEFAULT 0', 'pos_pending INTEGER DEFAULT 0', "courier_info TEXT DEFAULT ''", 'search_since TEXT'].forEach((c) => addCol('delivery_orders', c));
   ["delivery_by TEXT DEFAULT 'platform'", 'lat REAL', 'lng REAL'].forEach((c) => addCol('delivery_settings', c));
+  // 8-etap: mijoz qarzi (no-show), asossiz shikoyatlar, hisob-kitob akti
+  ['debt INTEGER DEFAULT 0', 'false_claims INTEGER DEFAULT 0'].forEach((c) => addCol('app_users', c));
+  ['debt_amount INTEGER DEFAULT 0', 'settlement_id INTEGER'].forEach((c) => addCol('delivery_orders', c));
   sync.installTriggers(); // delivery_settings ham bulutga sinxronlanadi
 
   const DEF = { delivery_by: 'platform', lat: null, lng: null, enabled: 0, open: 1, place_type: 'restoran', address: '', description: '', min_order: 0, delivery_fee: 10000, prep_minutes: 30, prepay_mode: 'mixed', cash_limit: 300000, partial_percent: 0, trusted_after: 5, expensive_limit: 500000 };
   const settingsOf = (b) => ({ ...DEF, ...(db.prepare('SELECT * FROM delivery_settings WHERE business_id=?').get(b) || {}) });
   const isReplica = (b) => !!db.prepare("SELECT 1 FROM businesses WHERE id=? AND sync_key!='' AND sync_url!=''").get(b);
   // 7-etap kuryer moduli ulanadigan joylar
-  const ext = { courierOf: () => null, publicExtra: () => ({}), cols: [] };
+  const ext = { courierOf: () => null, publicExtra: () => ({}), cols: [], denied: () => null }; // denied: 8-etap qora ro'yxat
   const getRow = (id) => { const r = db.prepare('SELECT * FROM delivery_orders WHERE id=?').get(id); if (r) r.items = JSON.parse(r.items || '[]'); return r; };
   const PAYABLE = ['trial', 'active', 'grace'];
   const operating = (b) => {
@@ -73,9 +76,11 @@ module.exports = function delivery(ctx) {
     if (tokHash(key + String(code || '').trim()) !== row.code_hash) { db.prepare('UPDATE otp_codes SET attempts=attempts+1 WHERE phone=?').run(key); fail(400, "Kod noto'g'ri"); }
     db.prepare('DELETE FROM otp_codes WHERE phone=?').run(key);
   }
-  route('POST', '/api/c/otp', null, async ({ body }) => { const phone = phoneNorm(body.phone); return otpSend(phone, phone); });
+  const notDenied = (kind, phone) => { if (ext.denied(kind, phone)) fail(403, "Akkaunt bloklangan. Platforma bilan bog'laning"); };
+  route('POST', '/api/c/otp', null, async ({ body }) => { const phone = phoneNorm(body.phone); notDenied('customer', phone); return otpSend(phone, phone); });
   route('POST', '/api/c/login', null, ({ body }) => {
     const phone = phoneNorm(body.phone);
+    notDenied('customer', phone);
     otpCheck(phone, body.code);
     let u = db.prepare('SELECT * FROM app_users WHERE phone=?').get(phone);
     if (!u) { db.prepare('INSERT INTO app_users (phone,name,created_at) VALUES (?,?,?)').run(phone, str(body.name, 'Ism', { required: false, max: 60 }), now()); u = db.prepare('SELECT * FROM app_users WHERE phone=?').get(phone); }
@@ -93,7 +98,7 @@ module.exports = function delivery(ctx) {
     if (u?.blocked) fail(403, 'Akkaunt bloklangan');
     return u || null;
   };
-  route('GET', '/api/c/me', null, ({ req }) => { const u = appUser(req); return { id: u.id, phone: u.phone, name: u.name, completed: u.completed }; });
+  route('GET', '/api/c/me', null, ({ req }) => { const u = appUser(req); return { id: u.id, phone: u.phone, name: u.name, completed: u.completed, debt: u.debt }; });
   route('POST', '/api/c/me', null, ({ req, body }) => { const u = appUser(req); db.prepare('UPDATE app_users SET name=? WHERE id=?').run(str(body.name, 'Ism', { max: 60 }), u.id); return { ok: true }; });
   route('POST', '/api/c/logout', null, ({ req }) => { const h = req.headers.authorization || ''; if (h.startsWith('Bearer ')) db.prepare('DELETE FROM app_sessions WHERE token_hash=?').run(tokHash(h.slice(7))); return { ok: true }; });
 
@@ -123,7 +128,8 @@ module.exports = function delivery(ctx) {
     const expensive = s.expensive_limit > 0 && total >= s.expensive_limit && items.some((i) => i.non_returnable);
     const overLimit = s.cash_limit > 0 && total > s.cash_limit;
     let type, reason;
-    if (s.prepay_mode === 'full') { type = 'full'; reason = "Bu joy faqat oldindan to'lov bilan ishlaydi"; }
+    if (u && u.debt > 0) { type = 'full'; reason = `Oldingi olinmagan buyurtma uchun qarz (${u.debt} so'm) shu buyurtmaga qo'shildi — to'liq oldindan to'lov`; }
+    else if (s.prepay_mode === 'full') { type = 'full'; reason = "Bu joy faqat oldindan to'lov bilan ishlaydi"; }
     else if (expensive) { type = 'full'; reason = "Qaytarib bo'lmaydigan qimmat buyurtma — to'liq oldindan to'lov"; }
     else if (u && u.no_shows > 0) { type = 'full'; reason = "Avval buyurtmani olmagansiz — to'liq oldindan to'lov"; }
     else if (s.prepay_mode === 'cash') { type = overLimit ? 'full' : 'cash'; reason = overLimit ? "Naqd limitdan oshdi" : 'Naqd mumkin'; }
@@ -148,8 +154,9 @@ module.exports = function delivery(ctx) {
         comment: str(x.comment, 'Izoh', { required: false, max: 120 }), non_returnable: pr.non_returnable };
     });
     const subtotal = items.reduce((t, i) => t + (i.price + i.mod_price) * i.qty, 0);
-    const total = subtotal + s.delivery_fee;
-    return { items, subtotal, delivery_fee: s.delivery_fee, total, min_order: s.min_order, min_ok: subtotal >= s.min_order, policy: policy(s, u, total, items), open: operating(b.id) };
+    const debt = u?.debt > 0 ? u.debt : 0; // no-show qarzi keyingi buyurtmaga qo'shiladi
+    const total = subtotal + s.delivery_fee + debt;
+    return { items, subtotal, delivery_fee: s.delivery_fee, debt, total, min_order: s.min_order, min_ok: subtotal >= s.min_order, policy: policy(s, u, total, items), open: operating(b.id) };
   }
   route('POST', '/api/c/quote', null, ({ req, body }) => { const b = placeByCode(body.place); const q = quote(b, appUser(req, false), body); return { ...q, providers: pay.providers() }; });
 
@@ -166,9 +173,9 @@ module.exports = function delivery(ctx) {
     const lat = body.lat != null && Number.isFinite(Number(body.lat)) ? Number(body.lat) : null, lng = body.lng != null && Number.isFinite(Number(body.lng)) ? Number(body.lng) : null;
     const cp = Number(tenant.setting('commission_percent')) || 0;
     const t = now();
-    const id = db.prepare(`INSERT INTO delivery_orders (business_id,app_user_id,phone,name,items,subtotal,delivery_fee,total,prepay_amount,payment_provider,payment_status,status,address,lat,lng,note,commission_percent,commission,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(b.id, u.id, u.phone, u.name || '', JSON.stringify(q.items), q.subtotal, q.delivery_fee, q.total, prepay, provider,
-      prepay ? 'pending' : 'none', prepay ? 'awaiting_payment' : 'new', address, lat, lng, str(body.note, 'Izoh', { required: false, max: 300 }), cp, Math.round(q.subtotal * cp / 100), t, t).lastInsertRowid;
+    const id = db.prepare(`INSERT INTO delivery_orders (business_id,app_user_id,phone,name,items,subtotal,delivery_fee,total,prepay_amount,payment_provider,payment_status,status,address,lat,lng,note,commission_percent,commission,created_at,updated_at,debt_amount)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(b.id, u.id, u.phone, u.name || '', JSON.stringify(q.items), q.subtotal, q.delivery_fee, q.total, prepay, provider,
+      prepay ? 'pending' : 'none', prepay ? 'awaiting_payment' : 'new', address, lat, lng, str(body.note, 'Izoh', { required: false, max: 300 }), cp, Math.round(q.subtotal * cp / 100), t, t, q.debt).lastInsertRowid;
     const o = getRow(id);
     if (!prepay) notifyNew(o);
     const ret = `${config.MODE === 'cloud' ? '' : ''}/app/#order/${id}`;
@@ -176,7 +183,7 @@ module.exports = function delivery(ctx) {
   });
   const publicOrder = (o) => {
     const b = db.prepare('SELECT name, code FROM businesses WHERE id=?').get(o.business_id);
-    const { dirty, commission, commission_percent, pos_order_id, offer_courier_id, offer_expires, offer_declined, handover_code, code_attempts, courier_info, pos_pending, ...rest } = o;
+    const { dirty, commission, commission_percent, pos_order_id, settlement_id, offer_courier_id, offer_expires, offer_declined, handover_code, code_attempts, courier_info, pos_pending, ...rest } = o;
     return { ...rest, place: b?.name, place_code: b?.code, ...ext.publicExtra(o) };
   };
   route('GET', '/api/c/orders', null, ({ req }) => {
@@ -235,6 +242,10 @@ module.exports = function delivery(ctx) {
   function onPaid(id, provider, amount) {
     const o = getRow(id); if (!o || o.payment_status === 'paid') return;
     db.prepare("UPDATE delivery_orders SET payment_status='paid', paid_amount=?, payment_provider=?, updated_at=? WHERE id=?").run(amount, provider, now(), id);
+    if (o.debt_amount > 0 && o.app_user_id) { // mijoz qarzini to'ladi → kafolat fondiga qaytadi
+      db.prepare('UPDATE app_users SET debt=MAX(0, debt-?) WHERE id=?').run(o.debt_amount, o.app_user_id);
+      db.prepare('INSERT INTO fund_moves (amount,order_id,note,at) VALUES (?,?,?,?)').run(o.debt_amount, id, "Mijoz qarzi undirildi (no-show)", now());
+    }
     if (o.status === 'awaiting_payment') { setStatus(getRow(id), 'new'); notifyNew(o); }
   }
   function onCancelled(id, refunded) {
@@ -328,7 +339,7 @@ module.exports = function delivery(ctx) {
     const rows = scope === 'active'
       ? db.prepare("SELECT id FROM delivery_orders WHERE business_id=? AND status IN ('new','accepted','ready','on_way') ORDER BY id").all(user.business_id)
       : db.prepare("SELECT id FROM delivery_orders WHERE business_id=? AND created_at>=? AND status!='awaiting_payment' ORDER BY id DESC").all(user.business_id, since.toISOString());
-    return rows.map((r) => { const o = getRow(r.id); return { ...o, courier: ext.courierOf(o), handover_code: undefined, offer_declined: undefined }; });
+    return rows.map((r) => { const o = getRow(r.id); return { ...o, courier: ext.courierOf(o), risk: ext.riskOf ? ext.riskOf(o) : [], handover_code: undefined, offer_declined: undefined }; });
   });
   // Restoran: kuryer topilmasa o'zi yetkazadi
   route('POST', '/api/delivery/orders/:id/own', DLV_ROLES, async ({ user, p }) => {

@@ -678,6 +678,7 @@ const sync = require('./sync')({ db, route, ROLES, int, str, fail, audit, now, t
 const delivery = require('./delivery')({ db, route, ROLES, int, str, fail, audit, broadcast, now, currentShift, needShift, loadOrder, business,
   sendToKitchen, closeOrder, tenant, sync, office, config, clientIp, imgRef });
 require('./courier')({ db, route, int, str, fail, now, tenant, broadcast, dlv: delivery }); // 7-etap: kuryerlar
+require('./platform')({ db, route, ROLES, int, str, fail, audit, now, tenant, broadcast, dlv: delivery }); // 8-etap: platforma admin
 
 // ---------- HTTP server ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
