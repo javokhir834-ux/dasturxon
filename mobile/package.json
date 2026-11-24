@@ -1,0 +1,21 @@
+{
+  "name": "dasturxon-mobile",
+  "private": true,
+  "type": "module",
+  "description": "Mobil ilovalar (Capacitor): mijoz, kuryer, biznes. Veb qismi ../public dan olinadi.",
+  "scripts": {
+    "build": "node build.mjs",
+    "sync": "node build.mjs && node sync.mjs"
+  },
+  "dependencies": {
+    "@capacitor-community/background-geolocation": "^1.3.1",
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/ios": "^8.6.0",
+    "@capacitor/push-notifications": "^8.1.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.0"
+  }
+}

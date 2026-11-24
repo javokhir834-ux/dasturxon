@@ -60,7 +60,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   check(pay2.status === 200 && pay2.bonus.balance === expBal, `bonus sarflandi va qayta yig'ildi (qoldiq ${pay2.bonus?.balance})`);
 
   // Bronlar
-  const t1 = new Date(Date.now() + 36e5); const hm = `${String(t1.getHours()).padStart(2, '0')}:${String(t1.getMinutes()).padStart(2, '0')}`;
+  const t1 = new Date(Date.now() + (new Date(Date.now() + 36e5).getDate() === new Date().getDate() ? 36e5 : -36e5)); /* yarim tunda ham 'bugun' ichida */ const hm = `${String(t1.getHours()).padStart(2, '0')}:${String(t1.getMinutes()).padStart(2, '0')}`;
   const rdate = `${t1.getFullYear()}-${String(t1.getMonth() + 1).padStart(2, '0')}-${String(t1.getDate()).padStart(2, '0')}`;
   const tables = boot.tables;
   const r1 = await api(kassir, 'POST', '/api/reservations', { type: 'stol', table_id: tables[4].id, name: 'Dilshod', phone: '931112233', guests: 4, date: rdate, time: hm, duration_min: 120, deposit: 100000, deposit_method: 'naqd' });

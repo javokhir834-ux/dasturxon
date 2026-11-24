@@ -5,4 +5,4 @@ start() { rm -rf /tmp/t$1; DATA_DIR=/tmp/t$1 PORT=8080 PLATFORM_PASSWORD=platfor
 stop() { kill $(cat /tmp/srv.pid) 2>/dev/null; sleep 0.4; }
 pkill -f "src/server.ts"; sleep 0.3
 for t in flow office staff tenant; do start $t; echo "== $t"; DATA_DIR=/tmp/t$t node tests/$t.cjs 2>&1 | tail -1; stop; done
-for t in sync delivery delivery_sync courier platform; do echo "== $t"; node tests/$t.cjs 2>&1 | tail -1; pkill -f "src/server.ts"; sleep 0.3; done
+for t in sync delivery delivery_sync courier platform push; do echo "== $t"; node tests/$t.cjs 2>&1 | tail -1; pkill -f "src/server.ts"; sleep 0.3; done

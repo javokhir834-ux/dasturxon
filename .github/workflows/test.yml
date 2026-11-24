@@ -1,0 +1,19 @@
+# Server testlari: tur tekshiruvi (tsc) va barcha API testlar — har push va PR da.
+name: Testlar
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['mobile/**', '**.md']
+  pull_request:
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run check
+      - run: bash tests/run_all.sh | tee test.log
+      - name: Hammasi yashilmi
+        run: "! grep -E 'Natija: [0-9]+ ✓, [1-9]' test.log && [ $(grep -c 'Natija' test.log) -ge 10 ]"

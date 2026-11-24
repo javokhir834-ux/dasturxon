@@ -2,6 +2,7 @@
 // Yangi etap = yangi fayl shu papkada + shu ro'yxatga bitta qator.
 import type { Ctx } from '../core/context.ts';
 import pos from './pos.ts';
+import push from './push.ts';
 import office from './office.ts';
 import staff from './staff.ts';
 import tenant from './tenant.ts';
@@ -12,6 +13,7 @@ import platform from './platform.ts';
 
 const MODULES: [string, (ctx: Ctx) => any][] = [
   ['pos', pos], // 1-etap: POS yadro (natijasi ctx ga yoyiladi: loadOrder, closeOrder, ...)
+  ['push', push], // ilovalarga push xabar (qurilma tokenlari)
   ['office', office], // 2-etap: ombor, texkartalar, hisobotlar
   ['staff', staff], // 3-etap: xodimlar, mijozlar, bronlar
   ['tenant', tenant], // 4-etap: bizneslar, obuna, platforma

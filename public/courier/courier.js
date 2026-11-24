@@ -50,13 +50,14 @@ function pickPhoto() {
 // GPS: liniyada bo'lganda har 10 soniyada yuboriladi
 function startGeo() {
   if (S.geo != null || !navigator.geolocation) return;
-  S.geo = navigator.geolocation.watchPosition((p) => {
+  const watch = window.DX?.watchPosition || ((ok, fail, o) => navigator.geolocation.watchPosition(ok, fail, o)); // ilovada — fonda GPS
+  S.geo = watch((p) => {
     if (Date.now() - S.lastLoc < 10000) return;
     S.lastLoc = Date.now();
     api('POST', '/api/k/location', { lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6) }).catch(() => {});
   }, () => toast('GPS yoqilmagan — buyurtma kelmaydi. Joylashuvga ruxsat bering', true), { enableHighAccuracy: true, maximumAge: 5000 });
 }
-function stopGeo() { if (S.geo != null) navigator.geolocation.clearWatch(S.geo); S.geo = null; }
+function stopGeo() { if (S.geo != null) { if (window.DX?.watchPosition) DX.clearWatch(S.geo); else navigator.geolocation.clearWatch(S.geo); } S.geo = null; }
 
 async function refresh() {
   if (!S.token) return;

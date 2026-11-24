@@ -722,7 +722,7 @@ const FORMS = {
     ['percent', 'Foiz (%)', 'number'], ['percent_base', 'Foiz nimadan', [['sales', "O'z sotuvidan (chegirmadan keyin)"], ['service', 'Xizmat haqidan']]]],
 };
 const COLS = {
-  products: [['image', '', (v) => v ? `<img class="thumb" src="${esc(v)}" alt="">` : ''], ['name', 'Nomi'], ['price', 'Narx', (v) => money(v)], ['category_id', 'Kategoriya', (v) => S.boot.categories.find((c) => c.id === v)?.name], ['workshop_id', 'Sex', (v) => S.boot.workshops.find((w) => w.id === v)?.name], ['mxik', 'MXIK'], ['delivery', 'Ilova', (v) => v ? '🛵' : ''], ['in_stop', 'Stop', (v) => v ? '<span class="chip danger">STOP</span>' : '']],
+  products: [['image', '', (v) => v ? `<img class="thumb" src="${esc(DX.asset(v))}" alt="">` : ''], ['name', 'Nomi'], ['price', 'Narx', (v) => money(v)], ['category_id', 'Kategoriya', (v) => S.boot.categories.find((c) => c.id === v)?.name], ['workshop_id', 'Sex', (v) => S.boot.workshops.find((w) => w.id === v)?.name], ['mxik', 'MXIK'], ['delivery', 'Ilova', (v) => v ? '🛵' : ''], ['in_stop', 'Stop', (v) => v ? '<span class="chip danger">STOP</span>' : '']],
   categories: [['name', 'Nomi'], ['color', 'Rang', (v) => `<span class="chip" style="border-color:${esc(v)};color:${esc(v)}">■</span>`]],
   modifiers: [['name', 'Nomi'], ['price', 'Narx', (v) => money(v)]],
   tables: [['name', 'Nomi'], ['hall_id', 'Zal', (v) => S.boot.halls.find((h) => h.id === v)?.name], ['seats', "O'rin"]],
@@ -785,7 +785,7 @@ A.aedit = async (el) => {
   const pr = modal(`<h2>${id ? 'Tahrirlash' : "Qo'shish"}</h2>${fields.map(([k, label, t]) => {
     const v = row[k] ?? (t === 'color' ? '#2f855a' : t === 'bool' ? 1 : '');
     if (t === 'bool') return `<label class="chk"><input type="checkbox" name="${k}" ${v ? 'checked' : ''}> ${esc(label)}</label>`;
-    if (t === 'img') return `<label>${label}</label><div class="row imgpick"><img class="thumb lg" src="${esc(v)}" ${v ? '' : 'hidden'} alt="">
+    if (t === 'img') return `<label>${label}</label><div class="row imgpick"><img class="thumb lg" src="${esc(DX.asset(v))}" ${v ? '' : 'hidden'} alt="">
       <label class="btn sm" style="margin:0">📷 Tanlash<input type="file" accept="image/*" hidden></label><button class="btn sm ghost" type="button" data-img-clear ${v ? '' : 'hidden'}>O'chirish</button>
       <input type="hidden" name="${k}" value="__keep__"></div><div class="muted small">Rasm avtomatik kichraytiriladi (≈480 px).</div>`;
     if (Array.isArray(t)) return `<label>${label}</label><select name="${k}">${t.map(([ov, on]) => `<option value="${ov}" ${String(ov) === String(v) ? 'selected' : ''}>${esc(on)}</option>`).join('')}</select>`;

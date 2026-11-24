@@ -5,7 +5,7 @@ Internet uzilsa ham ishlayveradi, chunki hammasi restoran ichidagi tarmoqda.
 
 ## Ishga tushirish
 
-1. **Node.js 22 LTS** o'rnating: https://nodejs.org (bir marta).
+1. **Node.js 22 LTS** (22.18 yoki yangi) o'rnating: https://nodejs.org (bir marta).
 2. Windows'da `start.bat` faylini ikki marta bosing. Brauzer o'zi ochiladi.
    Boshqa tizimlarda: `npm install` (bir marta), keyin `npm start`.
 3. Oynada **"Planshet/telefon: http://192.168.x.x:8080"** degan manzil chiqadi.
@@ -50,6 +50,11 @@ Restorandagi kompyuter bulutga **Boshqaruv → Sozlamalar → Bulut sinxronizats
 - **Restoran:** Boshqaruv → Yetkazib berish → "Kim yetkazadi: Platforma kuryerlari" va **"📍 Shu yerni belgilash"** (restoran joylashuvi).
   Buyurtmani qabul qilgach eng yaqin kuryerga avtomatik taklif ketadi. Kuryer plomba rasmini olib oladi, mijozdagi 4 xonali kod bilan topshiradi, chek o'zi yopiladi.
 - Kuryer olgan naqd hisobotda "Kuryer naqdi" bo'lib turadi — u kassaga emas, platforma orqali restoranga keladi.
+
+## Mobil ilovalar (Android, iOS)
+
+3 ta ilova: **Mijoz**, **Kuryer**, **Biznes** (POS planshet/telefonda). APK — GitHub Actions'da avtomatik yig'iladi.
+Qanday yuklab olish, nom/logo almashtirish, push xabarlar va Google Play — **mobile/README.md**.
 
 ## Namuna PIN kodlar
 

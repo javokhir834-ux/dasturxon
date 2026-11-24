@@ -3,19 +3,26 @@
 Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 
 ## Holat
-- **Tugagan:** 1-etap — POS yadro, 2-etap — Ofis, 3-etap — Xodimlar va mijozlar, 4-etap — Ko'p biznes va obuna, 5-etap — Bulut, 6-etap — Mijoz ilovasi, 7-etap — Kuryer ilovasi (hammasi 2026-11-24)
-- **Keyingi:** 8-etap — Platforma admin (hisob-kitob, nizolar, qora ro'yxat)
+- **Tugagan:** 1–8 etaplar (POS, ofis, xodimlar, ko'p biznes, bulut, mijoz ilovasi, kuryer, platforma admin) va
+  **8.5 — qayta qurish**: TypeScript + Fastify + Zod backend, 3 ta mobil ilova (Capacitor: mijoz, kuryer, biznes), push xabarlar (2026-11-24)
+- **Keyingi:** 9-etap — Dorixona, do'konlar, kechki chegirma (pastda reja). Undan keyin: PostgreSQL (bulut) — "Texnik qarz" bo'limiga qarang.
 
-## Arxitektura
-- Node.js 22+, tashqi paketlarsiz. Server: `server.js` (marshrutlar `route(method, pattern, roles, handler)`).
-- Baza: `node:sqlite` → `data/db.sqlite`. Sxema va namuna ma'lumotlar: `db.js` (`CREATE TABLE IF NOT EXISTS`).
-  Yangi ustunlar uchun keyingi etaplarda `ALTER TABLE` migratsiyasi qo'shilsin (try/catch bilan).
-- Real-time: SSE `/api/stream?token=` → `change` hodisasi `{type: orders|kitchen|menu|shift}`. Mijoz qayta yuklab oladi.
-- Frontend: `public/` (build'siz SPA). `app.js`: `A.*` — tugma harakatlari (`data-a`), `view*` — ekranlar, `modal()` — oynalar.
-  Dizayn tokenlari `styles.css` boshida (umumiy, brendsiz).
-- Har bir jadvalda `business_id` bor (hozircha 1). Multi-tenant uchun tayyor.
-- Pul: so'mda, INTEGER. Vaqt: ISO string.
-- Rollar: admin, kassir, ofitsiant, oshpaz. PIN 4 raqam (sha256 + salt). Sessiyalar xotirada (server qayta ishga tushsa, qayta kiriladi).
+## Arxitektura (8.5 dan boshlab)
+- **Server:** Node.js 22.18+ TypeScript'ni o'zi ishga tushiradi (build yo'q): `npm start` = `node src/server.ts`. Tur tekshiruvi: `npm run check` (tsc).
+  HTTP — **Fastify 5**, tekshiruv — **Zod 4** (`ctx.parse(schema, body)`) yoki eski `ctx.int/str`. Kutubxonalar: `package.json` (faqat fastify, zod).
+- **Tuzilma:**
+  - `src/server.ts` (ishga tushirish), `src/app.ts` (yig'ish), `src/core/` — config, db, http (HttpError/fail/int/str/parse), auth (rollar, sessiya, audit),
+    realtime (SSE), images, context (Ctx, `route()`), web (Fastify: CORS, xavfsizlik, limit, statik, xatolar).
+  - `src/services/` — tashqi xizmatlar adapterlari: sms, fiscal, printer, payments (Payme/Click), push (FCM).
+  - `src/modules/` — biznes modullari, **har etap bitta fayl**: `export default function nom(ctx: Ctx)` → `ctx.route(...)` bilan marshrut,
+    boshqa modullarga kerak funksiyalarni qaytaradi (`ctx.<nom>`). Tartib va ro'yxat: `src/modules/index.ts`.
+- **Baza:** `node:sqlite` → `data/db.sqlite` (lokal va bulut). Sxema: modul ichida `CREATE TABLE IF NOT EXISTS` + `addCol` (ALTER, try/catch). Qatorlar hozircha `any` (`Row`).
+- **Real-time:** POS — SSE (`/api/stream-ticket` → `/api/stream?ticket=`), mijoz/kuryer ilovalari — 3–5 s so'rov + push xabar.
+- **Frontend:** `public/` — build'siz vanilla JS (POS `/`, mijoz `/app`, kuryer `/courier`). `public/native.js` — mobil ilova ko'prigi (brauzerda ishlamaydi).
+- **Mobil ilovalar:** `mobile/` (Capacitor 8): `apps/mijoz|kuryer|biznes` (Android + iOS loyihalari), `build.mjs` (public → www + sozlama), `sync.mjs` (cap sync + ruxsatlar),
+  `brand.json` (nom, paket ID, server, push). APK — GitHub Actions (`.github/workflows/android.yml`). Batafsil: `mobile/README.md`.
+- Har jadvalda `business_id`. Pul — so'm, INTEGER. Vaqt — ISO. Muhim amallar `audit_log` ga. Rollar: admin, menejer, kassir, ofitsiant, oshpaz, omborchi.
+- **Testlar:** `npm test` (= `bash tests/run_all.sh`, `tests/*.cjs`, har biri toza bazada), brauzer: `tests/ui*.py` (playwright). CI: `.github/workflows/test.yml`.
 
 ## 1-etapda qilingan
 - Zallar va stollar, stol holati (band, pre-chek, tayyor taom, yuborilmagan), stolni ko'chirish, cheklarni birlashtirish, chekni bo'lish (qisman soni bilan).
@@ -242,6 +249,30 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 - Nizo bo'yicha SMS/push xabar — SMS provayder ulanganda.
 - Oferta: kompensatsiya, undirish va qora ro'yxat qoidalari yurist bilan yozilishi kerak.
 - Ko'p filialli ega uchun barcha filiallar aktlari bir joyda (ega kabineti) — keyin.
+
+## 8.5 — qayta qurish va mobil ilovalar (2026-11-24)
+- Backend `src/` ga ko'chirildi: CommonJS → ESM TypeScript, o'z HTTP serveri → Fastify 5 (marshrutlar o'zgarmadi — `ctx.route` adapteri), Zod yordamchisi,
+  `tsc --noEmit` xatosiz (`strict`, lekin `strictNullChecks` va `noImplicitAny` hozircha o'chiq). Barcha eski testlar o'zgarishsiz yashil.
+- Mobil ilova uchun server: CORS (`APP_ORIGINS`, standart `https://localhost, capacitor://localhost`), `GET /api/health`, SSE da CORS sarlavhalari.
+- **Push xabarlar** (`src/services/push.ts` FCM HTTP v1, JWT RS256 — paketsiz; `src/modules/push.ts` tokenlar):
+  yangi buyurtma → kassir/menejer/admin; holat o'zgarishi → mijoz; taklif → kuryer. `PUSH_MODE=off|test|fcm`, `FCM_SERVICE_ACCOUNT`. Yaroqsiz tokenlar o'chiriladi.
+- **3 ilova (Capacitor 8, Android + iOS):** birinchi ochilishda server manzili so'raladi (`/api/health` bilan tekshiriladi), `native.js` so'rovlarni serverga yo'naltiradi,
+  kuryerda fonda GPS (`@capacitor-community/background-geolocation`), push (`@capacitor/push-notifications`, `brand.json: push=true` bo'lganda), kamera — `<input capture>`.
+  Ikonka/splash: `apps/*/assets` → `npx capacitor-assets generate`.
+- Testlar: `tests/push.cjs` (16), `tests/ui8.py` (3 ilova brauzerda Capacitor soxtalashtirilib: server tanlash, CORS, SSE, buyurtma → kuryer).
+
+### 8.5 qarorlari
+- Native ilova = Capacitor (bitta veb kod, Android+iOS). Veb fayllar ilova ichida (oflayn ochiladi), API — tanlangan serverda.
+- Lokal restoran serveri `http://` (Wi-Fi) — ilovalarda cleartext/mixed content ruxsat. Ommaviy versiyada mijoz/kuryer faqat HTTPS bulutga ulanadi.
+- Paket ID: `uz.dasturxon.app|courier|business` — nom tanlangach `brand.json` da o'zgartiriladi (Play'ga chiqishdan OLDIN, keyin o'zgarmaydi).
+
+### Texnik qarz (keyingi bosqichlar)
+- **PostgreSQL (bulut):** barcha so'rovlar sinxron `db.prepare()` — Postgres asinxron, ya'ni har handler `async/await` ga o'tadi (~4000 qator). Tavsiya: real yuk
+  (yuzlab biznes) paydo bo'lganda alohida etap; tayyorgarlik — yangi kodda SQL ni modul ichidagi kichik funksiyalarga yig'ish. Lokal POS SQLite'da qoladi.
+- `strictNullChecks` ni modulma-modul yoqish; qatorlarga tur (Zod/Drizzle sxemalari).
+- WebSocket (mijoz/kuryer so'rovlari o'rniga), Redis (ko'p server bo'lganda).
+- iOS: Mac + Xcode + Apple Developer ($99/yil) — `mobile/README.md`.
+- Payme/Click qaytish manzili ilovaga (deep link) — haqiqiy merchant ulanganda.
 
 ## 9-etap rejasi (keyingi)
 - Dorixona (faqat retseptsiz, litsenziya va yurist xulosasidan keyin), do'konlar (og'irlik/dona, almashtirish), kechki chegirma moduli (ortgan taom).

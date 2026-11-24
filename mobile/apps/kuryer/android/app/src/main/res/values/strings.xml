@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Dasturxon Kuryer</string>
+    <string name="title_activity_main">Dasturxon Kuryer</string>
+    <string name="package_name">uz.dasturxon.courier</string>
+    <string name="custom_url_scheme">uz.dasturxon.courier</string>
+</resources>

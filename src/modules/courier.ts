@@ -373,6 +373,7 @@ export default function courier(ctx: Ctx) {
       if (!pick) { if (dec.length && !cands.some((c) => !dec.includes(c.id))) touch(o.id, { offer_declined: '[]' }); continue; } // hamma rad etgan bo'lsa — qaytadan aylanadi
       touch(o.id, { offer_courier_id: pick.c.id, offer_expires: new Date(Date.now() + S('offer_seconds') * 1000).toISOString() });
       cands.splice(cands.indexOf(pick.c), 1);
+      ctx.push?.toCourier(pick.c.id, { title: `Yangi buyurtma · ${Math.max(o.delivery_fee, S('courier_min_fee')) + levelOf(pick.c).bonus} so'm`, body: `${placeOf(o).name || ''} → ${o.address || ''}`.slice(0, 120), data: { type: 'offer', id: o.id } });
       ping(o);
     }
   }

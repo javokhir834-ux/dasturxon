@@ -1,0 +1,26 @@
+{
+  "appId": "uz.dasturxon.courier",
+  "appName": "Dasturxon Kuryer",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#0f1714"
+  },
+  "ios": {
+    "backgroundColor": "#0f1714",
+    "contentInset": "always"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
+  }
+}

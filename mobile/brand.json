@@ -1,0 +1,8 @@
+{
+  "_izoh": "Brend shu yerda: nom, paket ID, standart server. O'zgartirgach: node build.mjs && node sync.mjs (yoki GitHub Actions o'zi qiladi).",
+  "name": "Dasturxon",
+  "idPrefix": "uz.dasturxon",
+  "server": "",
+  "push": false,
+  "color": "#0f1714"
+}

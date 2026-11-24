@@ -218,7 +218,14 @@ export default function delivery(ctx: Ctx) {
     awaiting_payment: ['new', 'cancelled'], new: ['accepted', 'rejected', 'cancelled'], accepted: ['ready', 'on_way', 'delivered', 'no_show', 'rejected'],
     ready: ['on_way', 'delivered', 'no_show'], on_way: ['delivered', 'no_show'],
   };
-  function notifyNew(o) { broadcast(o.business_id, 'delivery', { new: o.id }); }
+  const STAFF_PUSH = ['admin', 'menejer', 'kassir'];
+  function notifyNew(o) {
+    broadcast(o.business_id, 'delivery', { new: o.id });
+    ctx.push?.toStaff(o.business_id, STAFF_PUSH, { title: '🛵 Yangi buyurtma', body: `D-${o.id} · ${o.total} so'm · ${o.address || ''}`.slice(0, 120), data: { type: 'delivery', id: o.id } });
+  }
+  // Mijozga holat haqida push (ilova yopiq bo'lsa ham)
+  const PUSH_TEXT = { new: 'Buyurtmangiz restoranga yuborildi', accepted: 'Restoran qabul qildi — tayyorlanmoqda', ready: 'Buyurtmangiz tayyor', on_way: "Kuryer yo'lda",
+    delivered: 'Yetkazildi. Yoqimli ishtaha!', rejected: 'Restoran buyurtmani rad etdi', cancelled: 'Buyurtma bekor qilindi', no_show: 'Buyurtma olinmadi deb belgilandi' };
   // Holatni o'zgartirish (har ikki serverda). Mijoz hisoblagichlari faqat app_users bor joyda (bulutda) yangilanadi.
   function setStatus(o, to, extra: Record<string, any> = {}) {
     if (!(FLOW[o.status] || []).includes(to)) fail(409, `"${o.status}" holatidan "${to}" ga o'tib bo'lmaydi`);
@@ -239,6 +246,7 @@ export default function delivery(ctx: Ctx) {
       if (to === 'cancelled' && extra.by === 'customer') db.prepare('UPDATE app_users SET cancels=cancels+1 WHERE id=?').run(o.app_user_id);
     }
     broadcast(o.business_id, 'delivery', { id: o.id });
+    if (o.app_user_id && PUSH_TEXT[to]) ctx.push?.toCustomer(o.app_user_id, { title: `Buyurtma #${o.id}`, body: PUSH_TEXT[to], data: { type: 'order', id: o.id } });
     return getRow(o.id);
   }
   function onPaid(id, provider, amount) {
@@ -442,7 +450,7 @@ export default function delivery(ctx: Ctx) {
         'address', 'lat', 'lng', 'note', 'prep_minutes', 'reject_reason', 'commission_percent', 'commission', 'created_at', 'updated_at', 'accepted_at', 'ready_at', 'delivered_at',
         'courier_id', 'courier_status', 'courier_info', 'own_delivery', 'search_since', 'picked_at'];
       const val = (c) => (c === 'business_id' ? biz.id : c === 'items' ? JSON.stringify(r.items) : r[c] ?? null);
-      if (!loc) { db.prepare(`INSERT INTO delivery_orders (id,${cols.join(',')}) VALUES (?,${cols.map(() => '?').join(',')})`).run(r.id, ...cols.map(val)); if (r.status === 'new') fresh = r.id; }
+      if (!loc) { db.prepare(`INSERT INTO delivery_orders (id,${cols.join(',')}) VALUES (?,${cols.map(() => '?').join(',')})`).run(r.id, ...cols.map(val)); if (r.status === 'new') { fresh = r.id; ctx.push?.toStaff(biz.id, STAFF_PUSH, { title: '🛵 Yangi buyurtma', body: `D-${r.id} · ${r.total} so'm`, data: { type: 'delivery', id: r.id } }); } }
       else if (!loc.dirty) {
         db.prepare(`UPDATE delivery_orders SET ${cols.filter((c) => c !== 'business_id').map((c) => c + '=?').join(',')} WHERE id=?`).run(...cols.filter((c) => c !== 'business_id').map(val), r.id);
         if (r.status === 'cancelled' && loc.status !== 'cancelled') cancelPosOrder(loc, 'Mijoz bekor qildi', { id: null }, false);

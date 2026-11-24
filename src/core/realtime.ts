@@ -23,8 +23,8 @@ export function useTicket(ticket: string) {
   const tk = tickets.get(ticket); tickets.delete(ticket);
   return tk && tk.exp > Date.now() ? db.prepare('SELECT id,business_id,name,role,active FROM users WHERE id=? AND active=1').get(tk.userId) : null;
 }
-export function attachStream(res: ServerResponse, businessId: number, onClose: (fn: () => void) => void) {
-  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+export function attachStream(res: ServerResponse, businessId: number, onClose: (fn: () => void) => void, headers: Record<string, any> = {}) {
+  res.writeHead(200, { ...headers, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
   res.write(': ok\n\n');
   const c = { res, businessId };
   streams.add(c);

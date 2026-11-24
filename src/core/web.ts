@@ -13,6 +13,7 @@ const PUBLIC = path.join(ROOT, 'public');
 const MIME: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
 const SPA = ['app', 'courier']; // /app/* va /courier/* — o'z index.html i
+const VERSION: string = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 
 export function buildServer(ctx: Ctx): FastifyInstance {
   const app = Fastify({ logger: config.MODE === 'cloud' ? { level: 'warn' } : false, bodyLimit: 1e6, trustProxy: config.TRUST_PROXY });
@@ -25,6 +26,17 @@ export function buildServer(ctx: Ctx): FastifyInstance {
   app.addContentTypeParser('application/json', { parseAs: 'string' }, json);
   app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_r, body: string, done) => done(null, Object.fromEntries(new URLSearchParams(body))));
   app.addContentTypeParser('*', { parseAs: 'string' }, json);
+
+  // ---- Mobil ilovalar (Capacitor) uchun CORS: ilova sahifasi https://localhost (Android) / capacitor://localhost (iOS) dan keladi
+  const ORIGINS = (process.env.APP_ORIGINS || 'https://localhost,capacitor://localhost,http://localhost').split(',').map((s) => s.trim()).filter(Boolean);
+  app.addHook('onRequest', async (req, reply) => {
+    const o = req.headers.origin;
+    if (!o || !ORIGINS.includes(o)) return;
+    reply.header('Access-Control-Allow-Origin', o).header('Vary', 'Origin').header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
+      .header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS').header('Access-Control-Max-Age', '86400');
+    if (req.method === 'OPTIONS') return reply.code(204).send();
+  });
+  app.get('/api/health', async () => ({ ok: true, app: 'dasturxon', mode: config.MODE, version: VERSION }));
 
   // ---- Xavfsizlik sarlavhalari va IP bo'yicha limit
   const rate = new Map<string, { n: number; reset: number }>();
@@ -68,8 +80,9 @@ export function buildServer(ctx: Ctx): FastifyInstance {
   app.get('/api/stream', (req, reply) => {
     const user = useTicket(String((req.query as Record<string, string>).ticket || ''));
     if (!user) return reply.code(401).send({ error: 'Kirish talab qilinadi' });
+    const headers = reply.getHeaders(); // CORS va xavfsizlik sarlavhalari (hijack dan keyin Fastify yubormaydi)
     reply.hijack();
-    attachStream(reply.raw, user.business_id, (fn) => req.raw.on('close', fn));
+    attachStream(reply.raw, user.business_id, (fn) => req.raw.on('close', fn), headers);
   });
 
   // ---- Mahsulot rasmlari

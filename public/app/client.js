@@ -82,7 +82,7 @@ function renderPlace(keep) {
   const cats = S.cat ? m.categories.filter((x) => x.id === S.cat) : m.categories;
   const card = (x) => {
     const q = qtyOf(x.id);
-    return `<div class="pcard ${x.in_stop ? 'stop' : ''}"><div class="ph" ${x.image ? `style="background-image:url('${esc(x.image)}')"` : ''}>${x.image ? '' : esc(x.name[0])}</div>
+    return `<div class="pcard ${x.in_stop ? 'stop' : ''}"><div class="ph" ${x.image ? `style="background-image:url('${esc(DX.asset(x.image))}')"` : ''}>${x.image ? '' : esc(x.name[0])}</div>
       <div class="bd"><div class="nm">${esc(x.name)}</div><div class="pr">${som(x.price)}</div>
       ${x.in_stop ? '<span class="muted small">Hozir mavjud emas</span>' : !p.open ? '' : q
         ? `<div class="step addbtn"><button data-a="qty" data-id="${x.id}" data-d="-1">−</button><span>${q}</span><button data-a="qty" data-id="${x.id}" data-d="1">+</button></div>`
