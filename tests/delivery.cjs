@@ -2,7 +2,7 @@
 const { spawn } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
-const APP = require('path').join(__dirname, '..', 'server.js'), B = 'http://127.0.0.1:8080';
+const APP = require('path').join(__dirname, '..', 'src', 'server.ts'), B = 'http://127.0.0.1:8080';
 let ok = 0, bad = 0;
 const check = (c, m) => { c ? ok++ : bad++; console.log((c ? '  ✓ ' : '  ✗ ') + m); };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

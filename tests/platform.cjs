@@ -3,7 +3,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
-const APP = require('path').join(__dirname, '..', 'server.js'), B = 'http://127.0.0.1:8080', DIR = '/tmp/plat8';
+const APP = require('path').join(__dirname, '..', 'src', 'server.ts'), B = 'http://127.0.0.1:8080', DIR = '/tmp/plat8';
 let ok = 0, bad = 0;
 const check = (c, m) => { c ? ok++ : bad++; console.log((c ? '  ✓ ' : '  ✗ ') + m); };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

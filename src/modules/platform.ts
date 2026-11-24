@@ -1,8 +1,8 @@
 // 8-etap: Platforma admin — restoranlar bilan hisob-kitob (akt), nizolar (isbotlar, aybdor, kompensatsiya, undirish, bosqichli choralar, e'tiroz),
 // qaytarishlar (refund_due, kompensatsiyalar), umumiy qora ro'yxat, firibgarlik belgilari, platforma statistikasi, platforma jurnali.
-'use strict';
 
-module.exports = function platform(ctx) {
+import type { Ctx } from '../core/context.ts';
+export default function platform(ctx: Ctx) {
   const { db, route, ROLES, int, str, fail, audit, now, tenant, broadcast, dlv } = ctx;
   const { ext, getRow, tokHash, phoneNorm } = dlv;
   const S = (k) => Number(tenant.setting(k));
@@ -28,7 +28,7 @@ module.exports = function platform(ctx) {
     not_delivered: 'Buyurtma kelmadi', rude: "Qo'pol muomala", payment: "To'lov muammosi", restaurant_delay: 'Restoran kechiktirdi', customer_abuse: 'Mijoz bilan muammo',
     block_appeal: "Blokdan e'tiroz", other: 'Boshqa' };
   const PARTIES = ['restaurant', 'courier', 'customer', 'platform', 'none'];
-  const log = (action, entity, id, details = {}) => db.prepare('INSERT INTO platform_log (action,entity,entity_id,details,at) VALUES (?,?,?,?,?)').run(action, entity, id, JSON.stringify(details), now());
+  const log = (action, entity, id, details: Record<string, any> = {}) => db.prepare('INSERT INTO platform_log (action,entity,entity_id,details,at) VALUES (?,?,?,?,?)').run(action, entity, id, JSON.stringify(details), now());
   const fund = (amount, order_id, note) => amount && db.prepare('INSERT INTO fund_moves (amount,order_id,note,at) VALUES (?,?,?,?)').run(amount, order_id, note, now());
   const cmove = (cid, type, amount, order_id, note) => db.prepare('INSERT INTO courier_moves (courier_id,type,amount,order_id,note,at) VALUES (?,?,?,?,?,?)').run(cid, type, amount, order_id, note, now());
   const photoOf = (v) => { const d = String(v || ''); if (!d) return ''; if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(d) || d.length > 700000) fail(400, "Rasm noto'g'ri yoki juda katta"); return d; };
@@ -46,7 +46,7 @@ module.exports = function platform(ctx) {
   const dayEnd = (d) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d || ''))) fail(400, "Sana noto'g'ri"); return new Date(`${d}T23:59:59.999`).toISOString(); };
   const range = (url) => {
     const f = new Date(`${url.searchParams.get('from')}T00:00:00`), t = new Date(`${url.searchParams.get('to')}T23:59:59.999`);
-    if (isNaN(f) || isNaN(t)) fail(400, "Sana noto'g'ri"); return [f.toISOString(), t.toISOString()];
+    if (isNaN(+f) || isNaN(+t)) fail(400, "Sana noto'g'ri"); return [f.toISOString(), t.toISOString()];
   };
 
   // ======================= QORA RO'YXAT =======================
@@ -182,7 +182,7 @@ module.exports = function platform(ctx) {
   const dOf = (id) => db.prepare('SELECT * FROM disputes WHERE id=?').get(int(id, 'id')) || fail(404, 'Nizo topilmadi');
   const notesOf = (id, withPhoto = true) => db.prepare(`SELECT id, author, text, ${withPhoto ? 'photo' : "CASE WHEN photo!='' THEN 1 ELSE 0 END photo"}, at FROM dispute_notes WHERE dispute_id=? ORDER BY id`).all(id);
   const addNote = (did, author, text, photo) => db.prepare('INSERT INTO dispute_notes (dispute_id,author,text,photo,at) VALUES (?,?,?,?,?)').run(did, author, text || '', photo || '', now());
-  function open({ o, by, against = '', category, text, amount = 0, photo, courier_id }) {
+  function open({ o, by, against = '', category, text, amount = 0, photo, courier_id }: Record<string, any>) {
     if (!CAT[category]) fail(400, 'Muammo turini tanlang');
     if (o && db.prepare("SELECT 1 FROM disputes WHERE order_id=? AND opened_by=? AND status='open'").get(o.id, by)) fail(409, "Bu buyurtma bo'yicha ochiq murojaatingiz bor");
     const t = str(text, 'Tavsif', { max: 1000 });
@@ -196,7 +196,7 @@ module.exports = function platform(ctx) {
     status: d.status, guilty: d.guilty, compensation: d.compensation, recover: who !== 'customer' && d.guilty === who ? d.recover : undefined, measure: who === 'courier' ? d.measure : undefined,
     resolution: d.resolution, resolved_at: d.resolved_at, created_at: d.created_at, appeal_status: d.appeal_status, appeal_note: d.appeal_note,
     can_appeal: canAppeal(d, who), notes: notesOf(d.id, false) });
-  const canAppeal = (d, who) => d.status === 'resolved' && d.guilty === who && ['restaurant', 'courier'].includes(who) && d.appeal_status === 'none' && Date.now() - new Date(d.resolved_at) < S('appeal_days') * 864e5;
+  const canAppeal = (d, who) => d.status === 'resolved' && d.guilty === who && ['restaurant', 'courier'].includes(who) && d.appeal_status === 'none' && Date.now() - +new Date(d.resolved_at) < S('appeal_days') * 864e5;
   function appeal(d, who, text) {
     if (!canAppeal(d, who)) fail(409, "E'tiroz bildirib bo'lmaydi (muddat o'tgan yoki allaqachon bildirilgan)");
     db.prepare("UPDATE disputes SET appeal_status='open', appeal_text=?, appeal_at=? WHERE id=?").run(str(text, "E'tiroz matni", { max: 1000 }), now(), d.id);
@@ -207,14 +207,14 @@ module.exports = function platform(ctx) {
   const prevExtra = ext.publicExtra;
   ext.publicExtra = (o) => {
     const d = db.prepare("SELECT * FROM disputes WHERE order_id=? AND opened_by='customer' ORDER BY id DESC LIMIT 1").get(o.id);
-    const canClaim = !d && ['delivered', 'no_show'].includes(o.status) && Date.now() - new Date(finishedAt(o)) < S('dispute_days') * 864e5;
+    const canClaim = !d && ['delivered', 'no_show'].includes(o.status) && Date.now() - +new Date(finishedAt(o)) < S('dispute_days') * 864e5;
     return { ...prevExtra(o), claim: d ? partyView(d, 'customer') : null, can_claim: canClaim };
   };
   route('POST', '/api/c/orders/:id/claim', null, ({ req, p, body }) => {
     const u = appUser(req); const o = getRow(int(p.id, 'id'));
     if (!o || o.app_user_id !== u.id) fail(404, 'Buyurtma topilmadi');
     if (!['delivered', 'no_show'].includes(o.status)) fail(409, 'Shikoyat faqat yakunlangan buyurtmaga');
-    if (Date.now() - new Date(finishedAt(o)) > S('dispute_days') * 864e5) fail(409, `Shikoyat muddati (${S('dispute_days')} kun) o'tgan`);
+    if (Date.now() - +new Date(finishedAt(o)) > S('dispute_days') * 864e5) fail(409, `Shikoyat muddati (${S('dispute_days')} kun) o'tgan`);
     if (db.prepare("SELECT 1 FROM disputes WHERE order_id=? AND opened_by='customer'").get(o.id)) fail(409, "Bu buyurtma bo'yicha shikoyat yuborilgan");
     const amount = int(body.amount ?? 0, 'Summa', { min: 0, max: o.total });
     const id = open({ o, by: 'customer', category: body.category, text: body.text, amount, photo: photoOf(body.photo) });
@@ -427,7 +427,7 @@ module.exports = function platform(ctx) {
   });
 
   // ======================= STATISTIKA =======================
-  const mins = (a, b) => (a && b ? (new Date(b) - new Date(a)) / 60000 : null);
+  const mins = (a, b) => (a && b ? (+new Date(b) - +new Date(a)) / 60000 : null);
   const avg = (xs) => { const v = xs.filter((x) => x != null && x >= 0); return v.length ? Math.round(v.reduce((t, x) => t + x, 0) / v.length) : null; };
   const ymdLocal = (iso) => { const d = new Date(iso), z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; };
   route('GET', '/api/platform/stats', null, ({ req, url }) => {
@@ -437,7 +437,7 @@ module.exports = function platform(ctx) {
     const dl = os.filter((o) => o.status === 'delivered'), fin = os.filter((o) => ['delivered', 'no_show'].includes(o.status)).map(line);
     const by = (k) => os.filter((o) => o.status === k).length;
     const fm = db.prepare('SELECT COALESCE(SUM(CASE WHEN amount>0 THEN amount END),0) inn, COALESCE(SUM(CASE WHEN amount<0 THEN amount END),0) out FROM fund_moves WHERE at BETWEEN ? AND ?').get(f, t);
-    const totals = {
+    const totals: Record<string, any> = {
       orders: os.length, delivered: dl.length, no_show: by('no_show'), rejected: by('rejected'), cancelled: by('cancelled'), active: os.filter((o) => ['new', 'accepted', 'ready', 'on_way'].includes(o.status)).length,
       gmv: dl.reduce((s, o) => s + o.total - (o.debt_amount || 0), 0), food: dl.reduce((s, o) => s + o.subtotal, 0), delivery_fees: dl.reduce((s, o) => s + o.delivery_fee, 0),
       commission: fin.reduce((s, l) => s + l.commission, 0),
@@ -450,9 +450,9 @@ module.exports = function platform(ctx) {
       avg_wait_min: avg(os.filter((o) => o.courier_id).map((o) => mins(o.ready_at, o.picked_at))), avg_ride_min: avg(dl.filter((o) => o.courier_id).map((o) => mins(o.picked_at, o.delivered_at))),
     };
     totals.avg_check = dl.length ? Math.round(totals.food / dl.length) : 0;
-    const days = {};
+    const days: Record<string, any> = {};
     for (const o of os) { const k = ymdLocal(o.created_at); days[k] = days[k] || { day: k, orders: 0, gmv: 0 }; days[k].orders++; if (o.status === 'delivered') days[k].gmv += o.total - (o.debt_amount || 0); }
-    const bizMap = {};
+    const bizMap: Record<string, any> = {};
     for (const o of os) {
       const b = (bizMap[o.business_id] = bizMap[o.business_id] || { id: o.business_id, orders: 0, delivered: 0, rejected: 0, gmv: 0, commission: 0, mins: [] });
       b.orders++; if (o.status === 'rejected') b.rejected++;
@@ -460,7 +460,7 @@ module.exports = function platform(ctx) {
       if (['delivered', 'no_show'].includes(o.status)) b.commission += line(o).commission;
     }
     const businesses = Object.values(bizMap).map(({ mins: m, ...b }) => ({ ...b, name: db.prepare('SELECT name FROM businesses WHERE id=?').get(b.id)?.name, avg_min: avg(m) })).sort((a, b) => b.gmv - a.gmv);
-    const cMap = {};
+    const cMap: Record<string, any> = {};
     for (const o of os.filter((x) => x.courier_id)) {
       const c = (cMap[o.courier_id] = cMap[o.courier_id] || { id: o.courier_id, delivered: 0, no_show: 0, ride: [], total: [] });
       if (o.status === 'delivered') { c.delivered++; c.ride.push(mins(o.picked_at, o.delivered_at)); c.total.push(mins(o.assigned_at, o.delivered_at)); }

@@ -1,7 +1,7 @@
 // 5-etap testi: lokal (8080) ↔ bulut (8090) sinxronizatsiyasi, internet uzilishi, xavfsizlik.
 const { spawn } = require('child_process');
 const fs = require('fs');
-const APP = require('path').join(__dirname, '..', 'server.js');
+const APP = require('path').join(__dirname, '..', 'src', 'server.ts');
 const L = 'http://127.0.0.1:8080', C = 'http://127.0.0.1:8090';
 let ok = 0, bad = 0;
 const check = (c, m) => { c ? ok++ : bad++; console.log((c ? '  ✓ ' : '  ✗ ') + m); };

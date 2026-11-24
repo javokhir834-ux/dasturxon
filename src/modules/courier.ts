@@ -1,9 +1,9 @@
 // 7-etap: Kuryerlar — ro'yxat (hujjat, test, sinov davri), taksi kabi taqsimlash, GPS, plomba rasmi, 4 xonali kod,
 // no-show tartibi, naqd limit va kunlik hisob, depozit, reyting, darajalar va bonuslar. Kuryer ilovasi: /courier
-'use strict';
-const crypto = require('crypto');
+import crypto from 'node:crypto';
 
-module.exports = function courier(ctx) {
+import type { Ctx } from '../core/context.ts';
+export default function courier(ctx: Ctx) {
   const { db, route, int, str, fail, now, tenant, broadcast, dlv } = ctx;
   const { ext, getRow, setStatus, finish, isReplica, otpSend, otpCheck, phoneNorm, tokHash, settingsOf } = dlv;
   const NOSHOW_WAIT = Number(process.env.NOSHOW_WAIT_SEC || 600) * 1000; // mijozni kutish (10 daqiqa)
@@ -77,7 +77,7 @@ module.exports = function courier(ctx) {
       if (m.type === 'cash_in') { hand -= m.amount; if (hand <= 0) { hand = 0; since = null; } }
       if (['fee', 'bonus'].includes(m.type) && m.at >= d0) earnedToday += m.amount;
     }
-    const mustSettle = hand > 0 && since && Date.now() - new Date(since) > SETTLE_HOURS * 36e5;
+    const mustSettle = hand > 0 && since && Date.now() - +new Date(since) > SETTLE_HOURS * 36e5;
     return { balance, hand, since, mustSettle: !!mustSettle, earnedToday };
   }
   const move = (cid, type, amount, order_id = null, note = '') => db.prepare('INSERT INTO courier_moves (courier_id,type,amount,order_id,note,at) VALUES (?,?,?,?,?,?)').run(cid, type, amount, order_id, note, now());
@@ -145,7 +145,7 @@ module.exports = function courier(ctx) {
   route('GET', '/api/k/test', null, ({ req }) => { courierAuth(req); return TEST.map(([q, a]) => ({ q, a })); });
   route('POST', '/api/k/test', null, ({ req, body }) => {
     const c = courierAuth(req); editable(c);
-    if (c.test_at && Date.now() - new Date(c.test_at) < 10 * 60000 && c.test_score < 7) fail(429, "Testni 10 daqiqadan keyin qayta topshirish mumkin");
+    if (c.test_at && Date.now() - +new Date(c.test_at) < 10 * 60000 && c.test_score < 7) fail(429, "Testni 10 daqiqadan keyin qayta topshirish mumkin");
     const ans = Array.isArray(body.answers) ? body.answers : [];
     const score = TEST.reduce((t, [, , right], i) => t + (Number(ans[i]) === right ? 1 : 0), 0);
     db.prepare('UPDATE couriers SET test_score=?, test_at=? WHERE id=?').run(score, now(), c.id);

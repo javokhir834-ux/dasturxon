@@ -6,10 +6,14 @@
 //   TRUST_PROXY=1        IP manzilni X-Forwarded-For dan olish (faqat proksi ortida)
 //   PLATFORM_PASSWORD=   platforma paneli paroli
 //   RATE_LIMIT=600       bitta IP dan daqiqasiga so'rovlar
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const envFile = path.join(__dirname, '.env');
+/** Loyiha ildizi (src/ ning ota papkasi) */
+export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+
+const envFile = path.join(ROOT, '.env');
 if (fs.existsSync(envFile)) {
   for (const line of fs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
@@ -19,11 +23,13 @@ if (fs.existsSync(envFile)) {
   }
 }
 
-const MODE = process.env.MODE === 'cloud' ? 'cloud' : 'local';
-module.exports = {
+const MODE: Mode = process.env.MODE === 'cloud' ? 'cloud' : 'local';
+export type Mode = 'local' | 'cloud';
+const config = {
   MODE,
   HOST: process.env.HOST || (MODE === 'cloud' ? '127.0.0.1' : '0.0.0.0'),
   PORT: Number(process.env.PORT) || 8080,
   TRUST_PROXY: process.env.TRUST_PROXY === '1' || MODE === 'cloud',
   RATE_LIMIT: Number(process.env.RATE_LIMIT) || 600,
 };
+export default config;

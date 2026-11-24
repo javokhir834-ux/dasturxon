@@ -1,7 +1,8 @@
 // 2-etap: Ofis — ombor, texnologik kartalar, kirim, chiqim, inventarizatsiya, ta'minotchilar, tannarx, hisobotlar.
-// server.js dan: require('./office')(ctx) — marshrutlarni ro'yxatdan o'tkazadi va sotuv hooklarini qaytaradi.
+// src/modules/index.ts orqali ulanadi — marshrutlarni ro'yxatdan o'tkazadi va sotuv hooklarini qaytaradi.
 
-module.exports = function office(ctx) {
+import type { Ctx } from '../core/context.ts';
+export default function office(ctx: Ctx) {
   const { db, route, ROLES, int, str, fail, audit, broadcast, now, currentShift } = ctx;
 
   // ---------- Sxema ----------
@@ -83,7 +84,7 @@ module.exports = function office(ctx) {
     const P = (n) => db.prepare('SELECT id FROM products WHERE business_id=? AND name=?').get(B, n)?.id;
     if (!P('Osh (1 porsiya)')) return;
     const ins = db.prepare('INSERT INTO ingredients (business_id,name,unit,cost,min_qty,is_semi) VALUES (?,?,?,?,?,?)');
-    const I = {};
+    const I: Record<string, any> = {};
     [["Mol go'shti", 'kg', 110000, 5], ["Qo'y go'shti", 'kg', 120000, 3], ['Tovuq', 'kg', 38000, 3], ['Jigar', 'kg', 60000, 1],
       ['Guruch (devzira)', 'kg', 28000, 10], ['Sabzi', 'kg', 6000, 10], ['Piyoz', 'kg', 5000, 10], ["O'simlik yog'i", 'l', 22000, 5],
       ['Un', 'kg', 7000, 20], ['Kartoshka', 'kg', 5000, 10], ['Pomidor', 'kg', 15000, 5], ['Bodring', 'kg', 12000, 3],
@@ -142,7 +143,7 @@ module.exports = function office(ctx) {
 
   route('GET', '/api/stock/moves', ROLES.STOCK, ({ user, url }) => {
     const iid = url.searchParams.get('ingredient_id'); const type = url.searchParams.get('type');
-    const args = [user.business_id]; let where = '';
+    const args: any[] = [user.business_id]; let where = '';
     if (iid) { where += ' AND m.ingredient_id=?'; args.push(Number(iid)); }
     if (type) { where += ' AND m.type=?'; args.push(type); }
     return db.prepare(`SELECT m.*, i.name, i.unit, u.name user_name FROM stock_moves m JOIN ingredients i ON i.id=m.ingredient_id
@@ -154,7 +155,7 @@ module.exports = function office(ctx) {
     const b = user.business_id;
     const id = body.id ? int(body.id, 'id', { min: 1 }) : null;
     const old = id ? ing(b, id) : null;
-    const v = {
+    const v : Record<string, any> = {
       name: body.name !== undefined ? str(body.name, 'Nomi') : old?.name ?? fail(400, 'Nomi kiritilmagan'),
       unit: body.unit !== undefined ? (UNITS.includes(body.unit) ? body.unit : fail(400, "O'lchov birligi noto'g'ri")) : old?.unit ?? 'kg',
       cost: body.cost !== undefined ? int(body.cost, 'Narx') : old?.cost ?? 0,
@@ -216,7 +217,7 @@ module.exports = function office(ctx) {
     const b = user.business_id;
     const id = body.id ? int(body.id, 'id', { min: 1 }) : null;
     const old = id ? db.prepare('SELECT * FROM suppliers WHERE id=? AND business_id=?').get(id, b) || fail(404, 'Topilmadi') : null;
-    const v = {
+    const v : Record<string, any> = {
       name: body.name !== undefined ? str(body.name, 'Nomi') : old?.name ?? fail(400, 'Nomi kiritilmagan'),
       phone: body.phone !== undefined ? str(body.phone, 'Telefon', { required: false }) : old?.phone ?? '',
       note: body.note !== undefined ? str(body.note, 'Izoh', { required: false }) : old?.note ?? '',
@@ -365,7 +366,7 @@ module.exports = function office(ctx) {
   // ---------- Hisobotlar ----------
   route('GET', '/api/reports/sales', ROLES.REPORTS, ({ user, url }) => {
     const b = user.business_id;
-    const day = (s, end) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(s || '')) fail(400, "Sana noto'g'ri"); return new Date(`${s}T${end ? '23:59:59.999' : '00:00:00'}`).toISOString(); };
+    const day = (s, end = false) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(s || '')) fail(400, "Sana noto'g'ri"); return new Date(`${s}T${end ? '23:59:59.999' : '00:00:00'}`).toISOString(); };
     const from = day(url.searchParams.get('from')), to = day(url.searchParams.get('to'), true);
     const orders = db.prepare(`SELECT o.*, u.name waiter_name FROM orders o LEFT JOIN users u ON u.id=o.waiter_id
       WHERE o.business_id=? AND o.status='closed' AND o.closed_at BETWEEN ? AND ?`).all(b, from, to);
@@ -374,9 +375,9 @@ module.exports = function office(ctx) {
       WHERE o.business_id=? AND o.status='closed' AND o.closed_at BETWEEN ? AND ? AND i.status!='cancelled'`).all(b, from, to);
     const pays = db.prepare(`SELECT p.method, SUM(p.amount) s FROM payments p JOIN orders o ON o.id=p.order_id
       WHERE o.business_id=? AND o.status='closed' AND o.closed_at BETWEEN ? AND ? GROUP BY p.method`).all(b, from, to);
-    const byOrder = {};
+    const byOrder: Record<string, any> = {};
     items.forEach((i) => (byOrder[i.order_id] ||= []).push(i));
-    const days = {}, hours = Array.from({ length: 24 }, (_, h) => ({ h, revenue: 0, orders: 0 })), waiters = {}, cats = {}, prods = {};
+    const days: Record<string, any> = {}, hours = Array.from({ length: 24 }, (_, h) => ({ h, revenue: 0, orders: 0 })), waiters: Record<string, any> = {}, cats: Record<string, any> = {}, prods: Record<string, any> = {};
     let revenue = 0, cost = 0, discounts = 0, service = 0, guests = 0, noRecipe = new Set();
     for (const o of orders) {
       const its = byOrder[o.id] || [];

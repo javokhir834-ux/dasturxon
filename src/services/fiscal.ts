@@ -8,7 +8,8 @@
 //   mock  - sinov: soxta fiskal belgi qaytaradi
 //   <provayder nomi> - kelajakda: haqiqiy integratsiya
 
-async function register({ business, order, items, payments }) {
+export interface FiscalResult { status: string; ref: string | null; note?: string }
+async function register({ business, order, items, payments }): Promise<FiscalResult> {
   const mode = business.fiscal_mode || 'off';
   if (mode === 'off') return { status: 'skipped', ref: null };
   const missing = items.filter((i) => !i.mxik);
@@ -23,4 +24,4 @@ async function register({ business, order, items, payments }) {
   return { status: 'not_configured', ref: null, note: `Fiskal provayder "${mode}" ulanmagan` };
 }
 
-module.exports = { register };
+export { register };

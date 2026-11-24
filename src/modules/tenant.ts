@@ -1,10 +1,11 @@
 // 4-etap: Ko'p biznes va obuna — ro'yxatdan o'tish, biznes kodi, ega kabineti (filiallar), tariflar/obuna, platforma (super-admin) paneli.
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
-const { DATA_DIR, hashPin } = require('./db');
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { DATA_DIR, hashPin } from '../core/db.ts';
 
-module.exports = function tenant(ctx) {
+import type { Ctx } from '../core/context.ts';
+export default function tenant(ctx: Ctx) {
   const { db, route, int, str, fail, now, clientIp } = ctx;
 
   // ---------- Sxema ----------
@@ -61,7 +62,7 @@ module.exports = function tenant(ctx) {
     const s = db.prepare('SELECT * FROM subscriptions WHERE business_id=? AND product=?').get(b, product);
     if (!s) return { status: 'none' };
     const today = ymd(new Date());
-    const daysLeft = Math.round((new Date(`${s.paid_until}T12:00:00`) - new Date(`${today}T12:00:00`)) / 864e5);
+    const daysLeft = Math.round((+new Date(`${s.paid_until}T12:00:00`) - +new Date(`${today}T12:00:00`)) / 864e5);
     const grace = Number(setting('grace_days'));
     const status = s.blocked ? 'blocked' : !s.enabled ? 'disabled' : daysLeft >= 0 ? (s.trial ? 'trial' : 'active') : daysLeft >= -grace ? 'grace' : 'expired';
     return { status, paid_until: s.paid_until, days_left: daysLeft, grace_left: status === 'grace' ? grace + daysLeft : null, trial: !!s.trial };
@@ -109,8 +110,8 @@ module.exports = function tenant(ctx) {
   }
   // Filial uchun boshqa filialdan menyu va sozlamalarni ko'chirish
   function copyBusiness(from, to) {
-    const map = {};
-    const copy = (table, cols, remap = {}) => {
+    const map: Record<string, any> = {};
+    const copy = (table, cols, remap: Record<string, any> = {}) => {
       map[table] = {};
       for (const r of db.prepare(`SELECT * FROM ${table} WHERE business_id=? AND active=1`).all(from)) {
         const vals = cols.map((c) => (remap[c] ? map[remap[c]][r[c]] : r[c]));
@@ -138,7 +139,7 @@ module.exports = function tenant(ctx) {
   const pinCheck = (p) => { if (!/^\d{4}$/.test(String(p || ''))) fail(400, "PIN 4 ta raqam bo'lishi kerak"); return String(p); };
   const passCheck = (p) => { if (String(p || '').length < 6) fail(400, "Parol kamida 6 belgidan iborat bo'lishi kerak"); return String(p); };
 
-  function createBusiness({ ownerId, name, phone, adminName, adminPin, sample, copyFrom }) {
+  function createBusiness({ ownerId, name, phone, adminName, adminPin, sample, copyFrom }: Record<string, any>) {
     db.exec('BEGIN');
     try {
       const code = newCode();
@@ -309,7 +310,7 @@ module.exports = function tenant(ctx) {
   route('GET', '/api/platform/payments', null, ({ req }) => {
     platAuth(req);
     const list = db.prepare('SELECT p.*, b.name business_name FROM subscription_payments p JOIN businesses b ON b.id=p.business_id ORDER BY p.id DESC LIMIT 300').all();
-    const byMonth = {};
+    const byMonth: Record<string, any> = {};
     db.prepare('SELECT at, amount FROM subscription_payments').all().forEach((x) => { const k = x.at.slice(0, 7); byMonth[k] = (byMonth[k] || 0) + x.amount; });
     return { list, byMonth: Object.entries(byMonth).sort().map(([month, sum]) => ({ month, sum })) };
   });

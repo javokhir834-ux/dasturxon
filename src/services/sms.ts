@@ -1,3 +1,4 @@
+import '../core/config.ts'; // .env avval yuklansin
 // SMS yuborish adapteri. Hozircha provayder ulanmagan:
 //   SMS_MODE=test (standart) — kod server konsoliga yoziladi va API javobida `dev_code` sifatida qaytadi (faqat sinov uchun!).
 // Haqiqiy provayder (masalan Eskiz.uz yoki Playmobile) shartnoma va kalitlar olingach shu yerga ulanadi.
@@ -11,4 +12,4 @@ async function send(phone, text) {
   return { ok: false, reason: `SMS provayder "${MODE}" ulanmagan` };
 }
 
-module.exports = { send, MODE };
+export { send, MODE };

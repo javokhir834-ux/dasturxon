@@ -1,9 +1,10 @@
 // 5-etap: Lokal server → bulut sinxronizatsiyasi.
 // Lokal (restoran) server — asosiy manba: internet uzilsa ham ishlaydi, o'zgarishlar navbatga (sync_outbox) yoziladi va internet bo'lganda bulutga yuboriladi.
 // Bulut — nusxa (mirror): ega uydan hisobotlarni ko'radi, xodimlar o'z PINi bilan kirib faqat ko'radi. Bulutdagi nusxaga yozish taqiqlangan.
-const crypto = require('crypto');
+import crypto from 'node:crypto';
 
-module.exports = function sync(ctx) {
+import type { Ctx } from '../core/context.ts';
+export default function sync(ctx: Ctx) {
   const { db, route, ROLES, str, fail, audit, now, tenant, config } = ctx;
 
   // ---------- Sxema ----------
@@ -64,7 +65,7 @@ module.exports = function sync(ctx) {
     } catch (e) { db.exec('ROLLBACK'); throw e; }
   }
 
-  async function cloudCall(url, key, path, body) {
+  async function cloudCall(url, key, path, body = undefined) {
     const r = await fetch(url.replace(/\/+$/, '') + path, {
       method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
       body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(20000),
@@ -74,7 +75,7 @@ module.exports = function sync(ctx) {
     return j;
   }
 
-  const state = {}; // business_id -> { busy, fails, nextAt }
+  const state: Record<string, any> = {}; // business_id -> { busy, fails, nextAt }
   const tickHooks = []; // (biz, cloudCall) => Promise — masalan, yetkazib berish buyurtmalarini tortish
   const BATCH = 300;
   async function pushOnce(biz) {
@@ -144,7 +145,7 @@ module.exports = function sync(ctx) {
   });
 
   // ======================= BULUT TOMON =======================
-  const colsCache = {};
+  const colsCache: Record<string, any> = {};
   const cols = (t) => (colsCache[t] ||= db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name).filter((c) => c !== 'id'));
   const getMap = (b, t, id) => db.prepare('SELECT cloud_id FROM sync_map WHERE business_id=? AND t=? AND local_id=?').get(b, t, id)?.cloud_id;
   const bizByKey = (req) => {
@@ -158,7 +159,7 @@ module.exports = function sync(ctx) {
 
   function applyRow(b, c) {
     const spec = SPEC[c.t];
-    const vals = {};
+    const vals : Record<string, any> = {};
     for (const col of cols(c.t)) {
       if (!(col in c.row)) continue;
       let v = c.row[col];
@@ -207,7 +208,7 @@ module.exports = function sync(ctx) {
       db.exec('COMMIT');
     } catch (e) { db.exec('ROLLBACK'); throw e; }
     return { ok: true, applied, errors };
-  });
+  }, { bodyLimit: 16e6 }); // to'liq nusxa katta bo'lishi mumkin
 
   // Ega kabineti: filial uchun ulash kaliti (faqat bir marta ko'rsatiladi)
   route('POST', '/api/owner/branches/:id/sync-key', null, ({ req, p }) => {

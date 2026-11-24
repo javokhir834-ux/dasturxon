@@ -1,6 +1,6 @@
 // Tarmoq termoprinteriga (ESC/POS, port 9100) chop etish.
 // Printer manzili: "192.168.1.50" yoki "192.168.1.50:9100". Bo'sh bo'lsa - chop etilmaydi.
-const net = require('net');
+import net from 'node:net';
 
 const ESC = '\x1b', GS = '\x1d';
 const ascii = (s) => String(s)
@@ -8,7 +8,7 @@ const ascii = (s) => String(s)
   .normalize('NFKD').replace(/[^\x20-\x7e\n]/g, '');
 
 function send(address, text) {
-  return new Promise((resolve) => {
+  return new Promise<{ ok: boolean; reason?: string }>((resolve) => {
     if (!address) return resolve({ ok: false, reason: 'printer sozlanmagan' });
     const [host, port] = address.split(':');
     const sock = net.createConnection({ host, port: Number(port) || 9100 });
@@ -37,4 +37,4 @@ function kitchenTicket({ workshop, order, table, waiter, items }) {
     new Date().toLocaleTimeString('uz-UZ'), line(), ...rows, line()].join('\n');
 }
 
-module.exports = { send, kitchenTicket };
+export { send, kitchenTicket };

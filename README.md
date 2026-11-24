@@ -7,7 +7,7 @@ Internet uzilsa ham ishlayveradi, chunki hammasi restoran ichidagi tarmoqda.
 
 1. **Node.js 22 LTS** o'rnating: https://nodejs.org (bir marta).
 2. Windows'da `start.bat` faylini ikki marta bosing. Brauzer o'zi ochiladi.
-   Boshqa tizimlarda `node server.js` buyrug'ini ishlating.
+   Boshqa tizimlarda: `npm install` (bir marta), keyin `npm start`.
 3. Oynada **"Planshet/telefon: http://192.168.x.x:8080"** degan manzil chiqadi.
    Ofitsiant telefonlari va oshxona planshetida shu manzilni oching. Hammasi bitta Wi-Fi'da bo'lishi kerak.
 

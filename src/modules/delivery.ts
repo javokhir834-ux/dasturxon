@@ -1,10 +1,12 @@
 // 6-etap: Yetkazib berish — mijoz ilovasi (/app), to'lov qoidalari, buyurtma holatlari, POS bilan bog'lanish, bulut ↔ lokal kanal.
 // Mijoz ilovasi bulut serverda ishlaydi. Biznes bulutdan to'g'ridan-to'g'ri ishlasa — buyurtma shu yerning POSiga tushadi;
 // lokal serverli biznes (bulutda "nusxa") bo'lsa — lokal server buyurtmani tortib oladi, holatlarni bulutga qaytaradi.
-const crypto = require('crypto');
-const sms = require('./sms');
+import crypto from 'node:crypto';
+import * as sms from '../services/sms.ts';
 
-module.exports = function delivery(ctx) {
+import type { Ctx } from '../core/context.ts';
+import payments from '../services/payments.ts';
+export default function delivery(ctx: Ctx) {
   const { db, route, ROLES, int, str, fail, audit, broadcast, now, needShift, loadOrder, business, sendToKitchen, closeOrder, tenant, sync, office, config, clientIp, imgRef } = ctx;
 
   // ---------- Sxema ----------
@@ -45,7 +47,7 @@ module.exports = function delivery(ctx) {
   const settingsOf = (b) => ({ ...DEF, ...(db.prepare('SELECT * FROM delivery_settings WHERE business_id=?').get(b) || {}) });
   const isReplica = (b) => !!db.prepare("SELECT 1 FROM businesses WHERE id=? AND sync_key!='' AND sync_url!=''").get(b);
   // 7-etap kuryer moduli ulanadigan joylar
-  const ext = { courierOf: () => null, publicExtra: () => ({}), cols: [], denied: () => null }; // denied: 8-etap qora ro'yxat
+  const ext : Record<string, any> = { courierOf: () => null, publicExtra: () => ({}), cols: [], denied: () => null }; // denied: 8-etap qora ro'yxat
   const getRow = (id) => { const r = db.prepare('SELECT * FROM delivery_orders WHERE id=?').get(id); if (r) r.items = JSON.parse(r.items || '[]'); return r; };
   const PAYABLE = ['trial', 'active', 'grace'];
   const operating = (b) => {
@@ -107,7 +109,7 @@ module.exports = function delivery(ctx) {
     const type = url.searchParams.get('type');
     return db.prepare('SELECT b.id, b.name, b.code FROM businesses b JOIN delivery_settings s ON s.business_id=b.id WHERE s.enabled=1 ORDER BY b.name').all()
       .filter((b) => PAYABLE.includes(tenant.subStatus(b.id, 'delivery').status) && tenant.subStatus(b.id, 'pos').status !== 'blocked')
-      .map(placeView).filter((p) => !type || p.type === type).sort((a, z) => z.open - a.open);
+      .map(placeView).filter((p) => !type || p.type === type).sort((a, z) => Number(z.open) - Number(a.open));
   });
   const placeByCode = (code) => {
     const b = db.prepare('SELECT b.id, b.name, b.code FROM businesses b JOIN delivery_settings s ON s.business_id=b.id WHERE b.code=? AND s.enabled=1').get(String(code || ''));
@@ -218,10 +220,10 @@ module.exports = function delivery(ctx) {
   };
   function notifyNew(o) { broadcast(o.business_id, 'delivery', { new: o.id }); }
   // Holatni o'zgartirish (har ikki serverda). Mijoz hisoblagichlari faqat app_users bor joyda (bulutda) yangilanadi.
-  function setStatus(o, to, extra = {}) {
+  function setStatus(o, to, extra: Record<string, any> = {}) {
     if (!(FLOW[o.status] || []).includes(to)) fail(409, `"${o.status}" holatidan "${to}" ga o'tib bo'lmaydi`);
     const t = now();
-    const f = { status: to, updated_at: t };
+    const f : Record<string, any> = { status: to, updated_at: t };
     if (to === 'accepted') { f.accepted_at = t; f.prep_minutes = extra.prep_minutes ?? o.prep_minutes; }
     if (to === 'ready') f.ready_at = t;
     if (to === 'delivered') f.delivered_at = t;
@@ -255,7 +257,7 @@ module.exports = function delivery(ctx) {
     const fresh = getRow(id);
     if (['awaiting_payment', 'new'].includes(fresh.status)) setStatus(fresh, 'cancelled', { by: 'payment' });
   }
-  const pay = require('./payments')({ db, route, getOrder: getRow, onPaid, onCancelled });
+  const pay = payments({ db, route, getOrder: getRow, onPaid, onCancelled });
   // To'lanmagan buyurtmalar 30 daqiqadan keyin bekor qilinadi
   setInterval(() => {
     for (const r of db.prepare("SELECT id FROM delivery_orders WHERE status='awaiting_payment' AND created_at < ?").all(new Date(Date.now() - 30 * 60000).toISOString())) {
@@ -291,7 +293,7 @@ module.exports = function delivery(ctx) {
     const list = [...(online ? [{ method, amount: online }] : []), ...(po.total - online > 0 ? [{ method: cashM, amount: po.total - online }] : [])];
     await closeOrder(po, list, user, needShift(o.business_id), 0);
   }
-  async function act(user, o, to, extra = {}) {
+  async function act(user, o, to, extra: Record<string, any> = {}) {
     const b = user.business_id;
     if (o.courier_id && ['on_way', 'delivered', 'no_show'].includes(to)) fail(409, 'Bu buyurtmani platforma kuryeri olib ketadi — holatni kuryer o\'zgartiradi');
     if (['on_way', 'delivered'].includes(to) && !o.own_delivery && settingsOf(b).delivery_by === 'platform' && !o.courier_id) { // kuryer topilmagan — restoran o'zi yetkazadi
@@ -374,7 +376,7 @@ module.exports = function delivery(ctx) {
   route('GET', '/api/delivery/settings', ROLES.MANAGE, ({ user }) => ({ ...settingsOf(user.business_id), subscription: tenant.subStatus(user.business_id, 'delivery'), providers: pay.providers() }));
   route('POST', '/api/delivery/settings', ROLES.ADMIN, ({ user, body }) => {
     const b = user.business_id; const cur = settingsOf(b);
-    const v = {
+    const v : Record<string, any> = {
       enabled: body.enabled != null ? (body.enabled ? 1 : 0) : cur.enabled, open: body.open != null ? (body.open ? 1 : 0) : cur.open,
       place_type: body.place_type != null ? (['restoran', 'fastfood', 'kafe', 'choyxona', 'shirinlik'].includes(body.place_type) ? body.place_type : fail(400, "Turi noto'g'ri")) : cur.place_type,
       address: body.address != null ? str(body.address, 'Manzil', { required: false, max: 200 }) : cur.address,
@@ -385,7 +387,7 @@ module.exports = function delivery(ctx) {
       lng: body.lng !== undefined ? (body.lng === null || body.lng === '' ? null : Number.isFinite(Number(body.lng)) ? Number(body.lng) : fail(400, "Koordinata noto'g'ri")) : cur.lng,
     };
     for (const [k, max] of [['min_order', 1e8], ['delivery_fee', 1e7], ['prep_minutes', 240], ['cash_limit', 1e9], ['partial_percent', 90], ['trusted_after', 100], ['expensive_limit', 1e9]])
-      v[k] = body[k] != null ? int(body[k], k, { max }) : cur[k];
+      v[k] = body[k] != null ? int(body[k], k as string, { max: max as number }) : cur[k];
     if (v.enabled && !isReplica(b) && !PAYABLE.includes(tenant.subStatus(b, 'delivery').status)) fail(409, "Yetkazib berish obunasi faol emas. Platforma bilan bog'laning");
     const keys = Object.keys(v);
     if (db.prepare('SELECT 1 FROM delivery_settings WHERE business_id=?').get(b)) db.prepare(`UPDATE delivery_settings SET ${keys.map((k) => k + '=?').join(',')} WHERE business_id=?`).run(...keys.map((k) => v[k]), b);
@@ -395,7 +397,7 @@ module.exports = function delivery(ctx) {
   });
   route('GET', '/api/delivery/report', ROLES.MANAGE, ({ user, url }) => {
     const f = new Date(`${url.searchParams.get('from')}T00:00:00`), t = new Date(`${url.searchParams.get('to')}T23:59:59.999`);
-    if (isNaN(f) || isNaN(t)) fail(400, "Sana noto'g'ri");
+    if (isNaN(+f) || isNaN(+t)) fail(400, "Sana noto'g'ri");
     const rows = db.prepare("SELECT status, COUNT(*) c, SUM(subtotal) food, SUM(commission) com, SUM(paid_amount) paid FROM delivery_orders WHERE business_id=? AND created_at BETWEEN ? AND ? AND status!='awaiting_payment' GROUP BY status").all(user.business_id, f.toISOString(), t.toISOString());
     return { rows };
   });

@@ -2,9 +2,9 @@
 // Qoida: imzo/autentifikatsiya avval, baza keyin; har bir callback idempotent; summalar Payme'da tiyinda, Click'da so'mda.
 // Kalitlar (muhit o'zgaruvchilari): PAYME_MERCHANT_ID, PAYME_KEY, PAYME_TEST=1 | CLICK_SERVICE_ID, CLICK_MERCHANT_ID, CLICK_SECRET_KEY.
 // Kalitlar bo'lmasa — faqat "test" provayderi ishlaydi (haqiqiy pul yechilmaydi).
-const crypto = require('crypto');
+import crypto from 'node:crypto';
 
-module.exports = function payments({ db, route, getOrder, onPaid, onCancelled }) {
+export default function payments({ db, route, getOrder, onPaid, onCancelled }: any) {
   db.exec(`CREATE TABLE IF NOT EXISTS payment_tx (
     id INTEGER PRIMARY KEY, provider TEXT NOT NULL, ext_id TEXT NOT NULL, order_id INTEGER NOT NULL, amount INTEGER NOT NULL,
     state INTEGER DEFAULT 1, ext_time INTEGER, create_time INTEGER, perform_time INTEGER DEFAULT 0, cancel_time INTEGER DEFAULT 0, reason INTEGER,
@@ -27,8 +27,8 @@ module.exports = function payments({ db, route, getOrder, onPaid, onCancelled })
   // ---------- Payme ----------
   const TIMEOUT = 12 * 3600 * 1000;
   const msg = (uz, ru) => ({ uz, ru, en: uz });
-  class PaymeError extends Error { constructor(code, m, data) { super(m?.uz || String(code)); this.code = code; this.m = m; this.data = data; } }
-  const pErr = (code, m, data) => { throw new PaymeError(code, m, data); };
+  class PaymeError extends Error { code: number; m: any; data: any; constructor(code, m, data = undefined) { super(m?.uz || String(code)); this.code = code; this.m = m; this.data = data; } }
+  const pErr = (code, m, data = undefined) => { throw new PaymeError(code, m, data); };
   const txOut = (t) => ({ transaction: String(t.id), state: t.state, create_time: t.create_time, perform_time: t.perform_time, cancel_time: t.cancel_time });
   function paymeAuth(req) {
     const h = req.headers.authorization || '';
@@ -45,7 +45,7 @@ module.exports = function payments({ db, route, getOrder, onPaid, onCancelled })
     return o;
   }
   const getTx = (id) => db.prepare("SELECT * FROM payment_tx WHERE provider='payme' AND ext_id=?").get(String(id));
-  function cancelTx(t, state, reason) {
+  function cancelTx(t, state, reason = undefined) {
     const ct = Date.now();
     db.prepare('UPDATE payment_tx SET state=?, cancel_time=?, reason=? WHERE id=?').run(state, ct, reason, t.id);
     return { ...t, state, cancel_time: ct, reason };
@@ -116,7 +116,7 @@ module.exports = function payments({ db, route, getOrder, onPaid, onCancelled })
   const md5 = (s) => crypto.createHash('md5').update(s).digest('hex');
   function clickHandler(body, action) {
     const b = body || {};
-    const out = (error, error_note, extra = {}) => ({ click_trans_id: b.click_trans_id, merchant_trans_id: b.merchant_trans_id, error, error_note, ...extra });
+    const out = (error, error_note, extra: Record<string, any> = {}) => ({ click_trans_id: b.click_trans_id, merchant_trans_id: b.merchant_trans_id, error, error_note, ...extra });
     if (!enabled.click) return out(-8, 'Click ulanmagan');
     const signBase = action === 0
       ? `${b.click_trans_id}${b.service_id}${env.CLICK_SECRET_KEY}${b.merchant_trans_id}${b.amount}${b.action}${b.sign_time}`

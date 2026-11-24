@@ -1,10 +1,11 @@
 // 3-etap: Xodimlar va mijozlar — rollar migratsiyasi, ish vaqti, maosh, mijozlar bazasi, bonus (keshbek),
 // stol/banket bronlari (zaklad bilan), egaga Telegram hisobot, avtomatik zaxira nusxa.
-const fs = require('fs');
-const path = require('path');
-const { DATA_DIR } = require('./db');
+import fs from 'node:fs';
+import path from 'node:path';
+import { DATA_DIR } from '../core/db.ts';
 
-module.exports = function staff(ctx) {
+import type { Ctx } from '../core/context.ts';
+export default function staff(ctx: Ctx) {
   const { db, route, ROLES, int, str, fail, audit, broadcast, now, currentShift, loadOrder, editableOrder, business, office } = ctx;
 
   // ---------- Migratsiyalar (2-etap bazasidan yangilanish) ----------
@@ -62,7 +63,7 @@ module.exports = function staff(ctx) {
     ok(from); ok(to);
     return [new Date(`${from}T00:00:00`), new Date(`${to}T23:59:59.999`)];
   };
-  const localTs = (v, name) => { const d = new Date(v); if (isNaN(d)) fail(400, `${name} noto'g'ri`); return d.toISOString(); };
+  const localTs = (v, name) => { const d = new Date(v); if (isNaN(+d)) fail(400, `${name} noto'g'ri`); return d.toISOString(); };
   const cashMove = (b, type, amount, note, userId) => {
     const sh = currentShift(b) || fail(409, "Kassadan pul harakati uchun smena ochiq bo'lishi kerak");
     db.prepare('INSERT INTO cash_moves (business_id,shift_id,type,amount,note,user_id,at) VALUES (?,?,?,?,?,?,?)').run(b, sh.id, type, amount, note, userId, now());
@@ -129,14 +130,14 @@ module.exports = function staff(ctx) {
   function payroll(b, from, to) {
     const [f, t] = dayRange(from, to);
     const nowD = new Date();
-    const days = Math.round((t - f) / 864e5);
+    const days = Math.round((+t - +f) / 864e5);
     const users = db.prepare('SELECT id,name,role,active,pay_type,rate,percent,percent_base FROM users WHERE business_id=? ORDER BY active DESC, id').all(b);
     const sheets = db.prepare('SELECT * FROM timesheets WHERE business_id=? AND start_at <= ? AND (end_at IS NULL OR end_at >= ?)').all(b, t.toISOString(), f.toISOString());
     const orders = db.prepare(`SELECT o.id, o.waiter_id, o.discount_percent, o.discount_amount, o.service_percent, SUM((i.price+i.mod_price)*i.qty) sub
       FROM orders o JOIN order_items i ON i.order_id=o.id AND i.status!='cancelled'
       WHERE o.business_id=? AND o.status='closed' AND o.closed_at BETWEEN ? AND ? GROUP BY o.id`).all(b, f.toISOString(), t.toISOString());
     const paid = db.prepare('SELECT user_id, SUM(amount) s FROM payroll_payments WHERE business_id=? AND at BETWEEN ? AND ? GROUP BY user_id').all(b, f.toISOString(), t.toISOString());
-    return users.map((u) => {
+    return users.map((u: any) => {
       const hours = sheets.filter((s) => s.user_id === u.id).reduce((h, s) => {
         const a = Math.max(+new Date(s.start_at), +f), z = Math.min(+(s.end_at ? new Date(s.end_at) : nowD), +t);
         return h + Math.max(0, z - a) / 36e5;
@@ -202,7 +203,7 @@ module.exports = function staff(ctx) {
       if (!ROLES.MANAGE.includes(user.role)) fail(403, "Shaxsiy chegirmani faqat admin yoki menejer belgilaydi");
       disc = int(body.discount_percent, 'Chegirma', { max: 50 });
     }
-    const v = { phone: ph, name: body.name !== undefined ? str(body.name, 'Ism', { required: false, max: 80 }) : old?.name ?? '', birthday: bd,
+    const v : Record<string, any> = { phone: ph, name: body.name !== undefined ? str(body.name, 'Ism', { required: false, max: 80 }) : old?.name ?? '', birthday: bd,
       note: body.note !== undefined ? str(body.note, 'Izoh', { required: false }) : old?.note ?? '', discount_percent: disc };
     let rid = id;
     if (old) db.prepare('UPDATE customers SET phone=?,name=?,birthday=?,note=?,discount_percent=? WHERE id=?').run(v.phone, v.name, v.birthday, v.note, v.discount_percent, id);
@@ -293,7 +294,7 @@ module.exports = function staff(ctx) {
     const name = str(body.name, 'Mijoz ismi', { max: 80 });
     const ph = body.phone ? phone(body.phone) : '';
     const customer = ph ? findOrCreateCustomer(b, ph, name) : null;
-    const v = { type, table_id: tableId, customer_id: customer?.id || null, name, phone: ph, guests: int(body.guests ?? 2, 'Mehmonlar', { min: 1, max: 1000 }),
+    const v : Record<string, any> = { type, table_id: tableId, customer_id: customer?.id || null, name, phone: ph, guests: int(body.guests ?? 2, 'Mehmonlar', { min: 1, max: 1000 }),
       start_at: start, duration_min: duration, per_person: int(body.per_person ?? 0, 'Kishi boshiga narx'), note: str(body.note, 'Izoh', { required: false, max: 500 }) };
     let rid = id;
     if (old) {

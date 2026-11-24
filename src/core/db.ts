@@ -1,16 +1,21 @@
 // Ma'lumotlar bazasi: node:sqlite (Node 22+), tashqi paketsiz.
-const { DatabaseSync } = require('node:sqlite');
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+import { DatabaseSync } from 'node:sqlite';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { ROOT } from './config.ts';
 
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+export const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
-const db = new DatabaseSync(path.join(DATA_DIR, 'db.sqlite'));
+/** Qatorlar hozircha `any` — qat'iy turlar Postgres/Drizzle bosqichida (PROGRESS.md) */
+export type Row = Record<string, any>;
+export interface Statement { get(...a: unknown[]): Row | undefined; all(...a: unknown[]): Row[]; run(...a: unknown[]): { changes: number; lastInsertRowid: number } }
+export interface Db { prepare(sql: string): Statement; exec(sql: string): void; close(): void }
+const db = new DatabaseSync(path.join(DATA_DIR, 'db.sqlite')) as unknown as Db;
 db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
 
 const SALT = 'dasturxon-pin-v1';
-const hashPin = (pin) => crypto.createHash('sha256').update(SALT + String(pin)).digest('hex');
+const hashPin = (pin: string | number) => crypto.createHash('sha256').update(SALT + String(pin)).digest('hex');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS businesses (
@@ -106,4 +111,4 @@ function seed() {
 }
 seed();
 
-module.exports = { db, hashPin, DATA_DIR };
+export { db, hashPin };
