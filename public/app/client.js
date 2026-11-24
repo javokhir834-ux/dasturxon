@@ -14,7 +14,7 @@ const store = {
 };
 const fmtPhone = (p) => (p && p.length === 12 ? `+${p.slice(0, 3)} ${p.slice(3, 5)} ${p.slice(5, 8)} ${p.slice(8, 10)} ${p.slice(10)}` : p || '');
 
-const TYPES = [['', 'Hammasi', '✨'], ['restoran', 'Restoran', '🍽'], ['fastfood', 'Fastfud', '🍔'], ['kafe', 'Kafe', '☕'], ['choyxona', 'Choyxona', '🫖'], ['shirinlik', 'Shirinliklar', '🍰']];
+const TYPES = [['', 'Hammasi', '✨'], ['restoran', 'Restoran', '🍽'], ['fastfood', 'Fastfud', '🍔'], ['kafe', 'Kafe', '☕'], ['choyxona', 'Choyxona', '🫖'], ['shirinlik', 'Shirinliklar', '🍰'], ['dorixona', 'Dorixona', '💊'], ['dokon', "Do'kon", '🛒']];
 const TYPE_ICON = Object.fromEntries(TYPES.map(([k, , i]) => [k, i]));
 const ST = {
   awaiting_payment: ["To'lov kutilmoqda", '💳', 'warn'], new: ['Restoran tasdiqlashini kutmoqda', '⏳', 'info'], accepted: ['Tayyorlanmoqda', '👨‍🍳', 'info'],
@@ -26,8 +26,12 @@ const PROV = { test: "Sinov to'lovi (test)", click: 'Click', payme: 'Payme', cas
 const S = { token: store.get('dx_ctoken'), me: null, type: '', places: null, menu: null, cat: null, quote: null, pay: null, payOnline: false, after: '#orders', poll: null, geo: store.get('dx_geo', true) };
 const cart = () => store.get('dx_cart', true) || { place: null, place_name: '', items: [] };
 const saveCart = (c) => store.set('dx_cart', c.items.length ? c : null);
-const cartCount = (c = cart()) => c.items.reduce((t, i) => t + i.qty, 0);
-const cartSum = (c = cart()) => c.items.reduce((t, i) => t + i.price * i.qty, 0);
+const cartCount = (c = cart()) => c.items.reduce((t, i) => t + (i.weight_g ? 1 : i.qty), 0);
+const lineSum = (i) => (i.weight_g ? Math.round((i.price * i.weight_g) / 1000) : i.price * i.qty); // kg mahsulot: narx 1 kg uchun
+const cartSum = (c = cart()) => c.items.reduce((t, i) => t + lineSum(i), 0);
+const keyOf = (i) => `${i.product_id}:${i.deal_id || ''}`;
+const kgTxt = (g) => `${+(g / 1000).toFixed(3)} kg`;
+const itemsPayload = (c) => c.items.map((i) => (i.weight_g ? { product_id: i.product_id, weight_g: i.weight_g } : { product_id: i.product_id, qty: i.qty, ...(i.deal_id ? { deal_id: i.deal_id } : {}) }));
 
 function toast(msg, err) {
   const t = document.createElement('div');
@@ -58,8 +62,11 @@ const view = (html, keep) => { const y = window.scrollY; $('#app').innerHTML = h
 async function viewHome() {
   const meBtn = `<button class="btn sm" data-a="go" data-v="${S.token ? '#orders' : '#login'}">${S.token ? '🧾 Buyurtmalarim' : 'Kirish'}</button>`;
   view(topbar(`<span style="color:var(--accent)">●</span> ${APP_NAME}`, '', meBtn) + `<div class="chips">${TYPES.map(([k, n, i]) => `<button class="${S.type === k ? 'on' : ''}" data-a="type" data-v="${k}">${i} ${n}</button>`).join('')}</div><div id="list"><div class="empty">Yuklanmoqda…</div></div>`);
-  const list = await run(() => api('GET', '/api/c/places' + (S.type ? '?type=' + S.type : '')));
+  const [list, deals] = await Promise.all([run(() => api('GET', '/api/c/places' + (S.type ? '?type=' + S.type : ''))), api('GET', '/api/c/deals').catch(() => [])]);
   if (!list) return;
+  if (deals.length && !S.type) $('#list').insertAdjacentHTML('beforebegin', `<h3 class="catttl">🌙 Kechki chegirmalar</h3><div class="deals">${deals.slice(0, 12).map((d) => `<button class="deal" data-a="go" data-v="#p/${esc(d.place_code)}">
+      <div class="ph" ${d.product?.image ? `style="background-image:url('${esc(DX.asset(d.product.image))}')"` : ''}><span class="off">-${d.percent}%</span></div>
+      <b>${esc(d.product?.name || '')}</b><div class="muted small">${esc(d.place)} · ${d.left} ta qoldi</div><div><s class="muted small">${money(d.old_price)}</s> <b>${som(d.price)}</b></div></button>`).join('')}</div>`);
   $('#list').innerHTML = list.length ? list.map((p) => `<button class="place ${p.open ? '' : 'closed'}" data-a="go" data-v="#p/${esc(p.code)}">
     <div class="logo">${TYPE_ICON[p.type] || esc(p.name[0])}</div>
     <div class="grow"><b>${esc(p.name)}</b><div class="muted small">${esc(p.description || p.address || '')}</div>
@@ -78,9 +85,18 @@ async function viewPlace(code) {
 }
 function renderPlace(keep) {
   const m = S.menu, p = m.place, c = cart();
-  const qtyOf = (id) => (c.place === p.code ? c.items.find((i) => i.product_id === id)?.qty : 0) || 0;
+  const lineOf = (id, deal = '') => (c.place === p.code ? c.items.find((i) => keyOf(i) === `${id}:${deal}`) : null);
+  const qtyOf = (id) => lineOf(id)?.qty || 0;
   const cats = S.cat ? m.categories.filter((x) => x.id === S.cat) : m.categories;
   const card = (x) => {
+    if (x.sold_by === 'kg') { // og'irlik bilan: qadam (masalan 250 g)
+      const l = lineOf(x.id);
+      return `<div class="pcard ${x.in_stop ? 'stop' : ''}"><div class="ph" ${x.image ? `style="background-image:url('${esc(DX.asset(x.image))}')"` : ''}>${x.image ? '' : esc(x.name[0])}</div>
+        <div class="bd"><div class="nm">${esc(x.name)}</div><div class="pr">${som(x.price)} <span class="muted small">/ kg</span></div>
+        ${x.in_stop ? '<span class="muted small">Hozir mavjud emas</span>' : !p.open ? '' : l
+          ? `<div class="step addbtn"><button data-a="qty" data-id="${x.id}" data-d="-1">−</button><span>${kgTxt(l.weight_g)}</span><button data-a="qty" data-id="${x.id}" data-d="1">+</button></div>`
+          : `<button class="btn sm primary addbtn" data-a="qty" data-id="${x.id}" data-d="1">+ ${kgTxt(x.step_g || 100)}</button>`}</div></div>`;
+    }
     const q = qtyOf(x.id);
     return `<div class="pcard ${x.in_stop ? 'stop' : ''}"><div class="ph" ${x.image ? `style="background-image:url('${esc(DX.asset(x.image))}')"` : ''}>${x.image ? '' : esc(x.name[0])}</div>
       <div class="bd"><div class="nm">${esc(x.name)}</div><div class="pr">${som(x.price)}</div>
@@ -91,7 +107,13 @@ function renderPlace(keep) {
   view(topbar(esc(p.name), '#') + `<div class="hero"><div class="muted">${esc(p.description || '')}</div>
     <div class="meta"><span class="chip">${TYPE_ICON[p.type] || ''} ${esc(TYPES.find((t) => t[0] === p.type)?.[1] || p.type)}</span><span class="chip">⏱ ${p.prep_minutes}–${p.prep_minutes + 20} daq</span>
     <span class="chip">🛵 ${p.delivery_fee ? som(p.delivery_fee) : 'Bepul yetkazish'}</span>${p.min_order ? `<span class="chip">min. ${som(p.min_order)}</span>` : ''}${p.open ? '' : '<span class="chip danger">Hozir buyurtma qabul qilmayapti</span>'}</div>
-    ${p.address ? `<div class="muted small" style="margin-top:8px">📍 ${esc(p.address)}</div>` : ''}</div>
+    ${p.address ? `<div class="muted small" style="margin-top:8px">📍 ${esc(p.address)}</div>` : ''}
+    ${p.type === 'dorixona' ? `<div class="note warn" style="margin-top:10px">💊 Ilovada faqat retseptsiz dori vositalari sotiladi. Qo'llashdan oldin yo'riqnomani o'qing va shifokor bilan maslahatlashing.</div>` : ''}</div>
+    ${(m.deals || []).length && p.open ? `<h3 class="catttl">🌙 Kechki chegirma</h3><div class="deals">${m.deals.map((d) => { const l = lineOf(d.product_id, d.id); return `<div class="deal">
+      <div class="ph" ${d.product?.image ? `style="background-image:url('${esc(DX.asset(d.product.image))}')"` : ''}><span class="off">-${d.percent}%</span></div>
+      <b>${esc(d.product?.name || '')}</b><div class="muted small">${d.left} ta qoldi · ${hhmm(d.ends_at)} gacha</div><div><s class="muted small">${money(d.old_price)}</s> <b>${som(d.price)}</b></div>
+      ${l ? `<div class="step"><button data-a="qty" data-id="${d.product_id}" data-deal="${d.id}" data-d="-1">−</button><span>${l.qty}</span><button data-a="qty" data-id="${d.product_id}" data-deal="${d.id}" data-d="1">+</button></div>`
+        : `<button class="btn sm primary" data-a="qty" data-id="${d.product_id}" data-deal="${d.id}" data-d="1">+ Savatga</button>`}</div>`; }).join('')}</div>` : ''}
     <div class="chips stickychips"><button class="${!S.cat ? 'on' : ''}" data-a="cat" data-v="">Hammasi</button>${m.categories.map((x) => `<button class="${S.cat === x.id ? 'on' : ''}" data-a="cat" data-v="${x.id}">${esc(x.name)}</button>`).join('')}</div>
     ${cats.map((ct) => `<h3 class="catttl">${esc(ct.name)}</h3><div class="pgrid">${m.products.filter((x) => x.category_id === ct.id).map(card).join('')}</div>`).join('')
       || `<div class="empty"><div class="ic">📋</div>Menyu hali to'ldirilmagan</div>`}`, keep);
@@ -102,10 +124,13 @@ async function viewCart(keep) {
   if (!c.items.length) return view(topbar('Savat', '#') + `<div class="empty"><div class="ic">🛒</div>Savat bo'sh<br><br><button class="btn primary" data-a="go" data-v="#">Joylarni ko'rish</button></div>`);
   const addr = store.get('dx_addr') || '';
   view(topbar('Savat', '#p/' + c.place) + `<div class="csec"><div class="panel"><h3>${esc(c.place_name)}</h3>
-    ${c.items.map((i) => `<div class="line"><div class="grow"><div>${esc(i.name)}</div><div class="muted small">${som(i.price)}</div></div>
-      <div class="step"><button data-a="cqty" data-id="${i.product_id}" data-d="-1">−</button><span>${i.qty}</span><button data-a="cqty" data-id="${i.product_id}" data-d="1">+</button></div>
-      <b class="num" style="min-width:86px;text-align:right">${money(i.price * i.qty)}</b></div>`).join('')}</div>
-    <div class="panel"><h3>Yetkazish manzili</h3>
+    ${c.items.map((i) => `<div class="line"><div class="grow"><div>${esc(i.name)}</div><div class="muted small">${i.weight_g ? `${som(i.price)} / kg` : som(i.price)}</div></div>
+      <div class="step"><button data-a="cqty" data-k="${keyOf(i)}" data-d="-1">−</button><span>${i.weight_g ? kgTxt(i.weight_g) : i.qty}</span><button data-a="cqty" data-k="${keyOf(i)}" data-d="1">+</button></div>
+      <b class="num" style="min-width:86px;text-align:right">${money(lineSum(i))}</b></div>`).join('')}
+      ${c.items.some((i) => i.weight_g) ? `<p class="muted small">⚖ Og'irlik taxminiy — do'kon tortib, aniq summani tasdiqlaydi. Ortiqcha to'lov qaytariladi.</p>` : ''}</div>
+    ${c.pickup ? `<div class="panel"><div class="opts two">${[['delivery', '🛵 Yetkazib berish'], ['pickup', "🚶 O'zim olib ketaman"]].map(([k, n]) => `<button class="opt ${(S.mode || 'delivery') === k ? 'on' : ''}" data-a="mode" data-v="${k}"><i></i>${n}</button>`).join('')}</div></div>` : ''}
+    ${['dokon', 'dorixona'].includes(c.place_type) ? `<div class="panel"><h3>Mahsulot bo'lmasa</h3><div class="opts">${[['replace', "O'xshashiga almashtiring"], ['remove', "Olib tashlang (pul qaytariladi)"], ['call', "Qo'ng'iroq qiling"]].map(([k, n]) => `<button class="opt ${(S.subst || 'call') === k ? 'on' : ''}" data-a="subst" data-v="${k}"><i></i>${n}</button>`).join('')}</div></div>` : ''}
+    <div class="panel" ${S.mode === 'pickup' && c.pickup ? 'hidden' : ''}><h3>Yetkazish manzili</h3>
       <textarea id="addr" rows="2" placeholder="Shahar, ko'cha, uy, xonadon, mo'ljal">${esc(addr)}</textarea>
       <button class="btn sm" style="margin-top:8px" data-a="geo">📍 ${S.geo ? 'Joylashuv olindi — yangilash' : 'Joylashuvimni yuborish'}</button>
       <label>Izoh (ixtiyoriy)</label><input id="note" maxlength="300" placeholder="Masalan: domofon 25, qo'ng'iroq qiling"></div>
@@ -116,7 +141,7 @@ async function viewCart(keep) {
 }
 async function loadQuote() {
   const c = cart();
-  const q = await api('POST', '/api/c/quote', { place: c.place, items: c.items.map((i) => ({ product_id: i.product_id, qty: i.qty })) }).catch((e) => ({ error: e.message }));
+  const q = await api('POST', '/api/c/quote', { place: c.place, items: itemsPayload(c), mode: c.pickup && S.mode === 'pickup' ? 'pickup' : 'delivery' }).catch((e) => ({ error: e.message }));
   const box = $('#qbox'); if (!box) return;
   if (q.error) { box.innerHTML = `<div class="note danger">${esc(q.error)}</div>`; $('#place').disabled = true; return; }
   S.quote = q;
@@ -178,7 +203,8 @@ async function viewOrder(id, silent) {
   if (!o) return silent ? null : go('#orders');
   if (location.hash !== '#order/' + id) return;
   const st = ST[o.status] || [o.status, '•', ''];
-  const steps = [['new', "Buyurtma qabul qilindi", o.created_at], ['accepted', 'Restoran tasdiqladi, tayyorlanmoqda', o.accepted_at], ['ready', 'Taom tayyor', o.ready_at], ['on_way', "Kuryer yo'lda", null], ['delivered', 'Yetkazildi', o.delivered_at]];
+  const steps = [['new', "Buyurtma qabul qilindi", o.created_at], ['accepted', 'Restoran tasdiqladi, tayyorlanmoqda', o.accepted_at], ['ready', 'Taom tayyor', o.ready_at], ['on_way', "Kuryer yo'lda", null], ['delivered', 'Yetkazildi', o.delivered_at]].filter((x) => o.mode !== 'pickup' || x[0] !== 'on_way')
+    .map((x) => (o.mode === 'pickup' && x[0] === 'ready' ? [x[0], 'Tayyor — olib ketishingiz mumkin', x[2]] : o.mode === 'pickup' && x[0] === 'delivered' ? [x[0], 'Olib ketildi', x[2]] : x));
   const order = ['new', 'accepted', 'ready', 'on_way', 'delivered'];
   const idx = order.indexOf(o.status);
   const eta = o.accepted_at && o.prep_minutes && ['accepted', 'ready', 'on_way'].includes(o.status) ? hhmm(new Date(new Date(o.accepted_at).getTime() + (o.prep_minutes + 20) * 60000).toISOString()) : '';
@@ -194,10 +220,12 @@ async function viewOrder(id, silent) {
     ${o.status === 'awaiting_payment' ? `<button class="btn primary block" style="margin-bottom:12px" data-a="go" data-v="#pay/${o.id}">To'lovni yakunlash · ${som(o.prepay_amount)}</button>` : ''}
     ${idx >= 0 ? `<div class="panel"><ul class="tl">${steps.map(([k, n, t], i) => `<li class="${i < idx ? 'done' : i === idx ? 'cur done' : ''}">${n}${t && i <= idx ? ` <span class="muted small">${hhmm(t)}</span>` : ''}</li>`).join('')}</ul></div>` : ''}
     <div class="panel"><h3>Tarkibi</h3>${o.items.map((i) => `<div class="line"><span class="grow">${esc(i.name)} × ${i.qty}</span><b class="num">${money((i.price + (i.mod_price || 0)) * i.qty)}</b></div>`).join('')}
-      <div class="sum" style="margin-top:8px"><div class="r"><span>Yetkazib berish</span><span>${o.delivery_fee ? som(o.delivery_fee) : 'bepul'}</span></div>${o.debt_amount ? `<div class="r"><span>Oldingi qarz</span><span>${som(o.debt_amount)}</span></div>` : ''}<div class="r b"><span>Jami</span><span>${som(o.total)}</span></div></div>
+      <div class="sum" style="margin-top:8px"><div class="r"><span>${o.mode === 'pickup' ? 'Olib ketish' : 'Yetkazib berish'}</span><span>${o.delivery_fee ? som(o.delivery_fee) : 'bepul'}</span></div>${o.debt_amount ? `<div class="r"><span>Oldingi qarz</span><span>${som(o.debt_amount)}</span></div>` : ''}<div class="r b"><span>Jami</span><span>${som(o.total)}</span></div></div>
       ${payNote ? `<div class="note ${payNote[0]}" style="margin-top:10px">${esc(payNote[1])}</div>` : ''}
       ${cash > 0 && !['cancelled', 'rejected', 'no_show', 'delivered'].includes(o.status) ? `<div class="muted small" style="margin-top:8px">Kuryerga naqd: <b>${som(cash)}</b></div>` : ''}</div>
-    <div class="panel"><div class="muted small">📍 ${esc(o.address)}${o.note ? `<br>💬 ${esc(o.note)}` : ''}</div></div>
+    ${o.changes && JSON.parse(o.changes).length ? `<div class="panel"><h3>Do'kon o'zgartirdi</h3>${JSON.parse(o.changes).map((x) => `<div class="small">• ${esc(x)}</div>`).join('')}
+      ${o.refund_amount ? `<div class="note warn" style="margin-top:8px">${som(o.refund_amount)} qaytariladi</div>` : ''}</div>` : ''}
+    <div class="panel"><div class="muted small">${o.mode === 'pickup' ? `🚶 Olib ketish: <b>${esc(o.place)}</b>` : `📍 ${esc(o.address)}`}${o.note ? `<br>💬 ${esc(o.note)}` : ''}</div></div>
     ${claimBox(o)}
     ${['awaiting_payment', 'new'].includes(o.status) ? `<button class="btn danger block" data-a="ocancel" data-id="${o.id}">Buyurtmani bekor qilish</button>` : ''}</div>`, silent);
   return o;
@@ -294,19 +322,28 @@ const A = {
       if (!confirm(`Savatda "${c.place_name}" taomlari bor. Savatni tozalab, "${p.name}" dan buyurtma qilamizmi?`)) return;
       c = { place: null, items: [] };
     }
-    c.place = p.code; c.place_name = p.name;
-    const it = c.items.find((i) => i.product_id === x.id);
-    if (it) it.qty += Number(el.dataset.d); else c.items.push({ product_id: x.id, name: x.name, price: x.price, qty: 1 });
-    c.items = c.items.filter((i) => i.qty > 0);
+    c.place = p.code; c.place_name = p.name; c.place_type = p.type; c.pickup = p.pickup;
+    const d = Number(el.dataset.d), deal = el.dataset.deal ? (m.deals || []).find((z) => z.id === Number(el.dataset.deal)) : null;
+    const it = c.items.find((i) => keyOf(i) === `${x.id}:${deal ? deal.id : ''}`);
+    if (x.sold_by === 'kg' && !deal) {
+      const step = x.step_g || 100;
+      if (it) it.weight_g += d * step; else if (d > 0) c.items.push({ product_id: x.id, name: x.name, price: x.price, qty: 1, weight_g: step, step_g: step });
+    } else if (deal) {
+      if (it) it.qty = Math.min(deal.left, it.qty + d); else if (d > 0) c.items.push({ product_id: x.id, name: `🌙 ${x.name}`, price: deal.price, qty: 1, deal_id: deal.id });
+    } else if (it) it.qty += d; else c.items.push({ product_id: x.id, name: x.name, price: x.price, qty: 1 });
+    c.items = c.items.filter((i) => (i.weight_g != null ? i.weight_g > 0 : i.qty > 0));
     saveCart(c); renderPlace(true);
   },
   cqty: (el) => {
-    const c = cart(); const it = c.items.find((i) => i.product_id === Number(el.dataset.id)); if (!it) return;
-    it.qty = Math.min(50, it.qty + Number(el.dataset.d)); c.items = c.items.filter((i) => i.qty > 0); saveCart(c);
+    const c = cart(); const it = c.items.find((i) => keyOf(i) === el.dataset.k); if (!it) return;
+    if (it.weight_g) it.weight_g += Number(el.dataset.d) * (it.step_g || 100); else it.qty = Math.min(50, it.qty + Number(el.dataset.d));
+    c.items = c.items.filter((i) => (i.weight_g != null ? i.weight_g > 0 : i.qty > 0)); saveCart(c);
     const a = $('#addr')?.value, n = $('#note')?.value;
     viewCart(true).then(() => { if ($('#addr') && a != null) $('#addr').value = a; if ($('#note') && n) $('#note').value = n; });
   },
   pay: (el) => { S.pay = el.dataset.v; loadQuote(); },
+  mode: (el) => { S.mode = el.dataset.v; const a = $('#addr')?.value; viewCart(true).then(() => { if ($('#addr') && a != null) $('#addr').value = a; }); },
+  subst: (el) => { S.subst = el.dataset.v; document.querySelectorAll('[data-a="subst"]').forEach((b) => b.classList.toggle('on', b === el)); },
   geo: (el) => {
     if (!navigator.geolocation) return toast("Telefoningiz joylashuvni bermayapti", true);
     el.textContent = '📍 Aniqlanmoqda…';
@@ -317,12 +354,14 @@ const A = {
   },
   order: async (el) => {
     const c = cart(), q = S.quote; if (!q) return;
-    const address = $('#addr').value.trim();
-    if (address.length < 5) { $('#addr').focus(); return toast("Manzilni to'liq yozing", true); }
-    store.set('dx_addr', address);
+    const pickup = c.pickup && S.mode === 'pickup';
+    const address = pickup ? '' : $('#addr').value.trim();
+    if (!pickup && address.length < 5) { $('#addr').focus(); return toast("Manzilni to'liq yozing", true); }
+    if (!pickup) store.set('dx_addr', address);
     if (!S.token) { S.after = '#cart'; return go('#login'); }
     const online = q.policy.type !== 'cash' ? S.pay : S.pay !== 'cash' ? S.pay : null;
-    const body = { place: c.place, items: c.items.map((i) => ({ product_id: i.product_id, qty: i.qty })), address, note: $('#note').value.trim(),
+    const body = { place: c.place, items: itemsPayload(c), address, note: $('#note').value.trim(), mode: pickup ? 'pickup' : 'delivery',
+      ...(['dokon', 'dorixona'].includes(c.place_type) ? { substitution: S.subst || 'call' } : {}),
       ...(S.geo ? { lat: S.geo.lat, lng: S.geo.lng } : {}), ...(online ? { provider: online } : {}), pay_online: q.policy.type === 'cash' ? !!online : (q.policy.type === 'partial' && S.payOnline) };
     el.disabled = true;
     const r = await run(() => api('POST', '/api/c/orders', body));

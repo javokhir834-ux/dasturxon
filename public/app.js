@@ -201,6 +201,7 @@ function navItems() {
   if (VIEWS.reservations && can('admin', 'menejer', 'kassir', 'ofitsiant')) items.push(['reservations', 'Bronlar']);
   if (VIEWS.customers && can(...CASHR)) items.push(['customers', 'Mijozlar']);
   if (can('admin', 'menejer', 'omborchi')) items.push(['stock', 'Ombor']);
+  if (VIEWS.counter && can(...CASHR)) items.push(['counter', '🛒 Tez sotuv']); // 9-etap: stolsiz kassa (do'kon, dorixona, olib ketish)
   if (VIEWS.delivery && can(...CASHR) && S.boot.business.delivery && S.boot.business.delivery.status !== 'disabled') items.push(['delivery', `🛵 Yetkazish${S.dlvNew ? ` <span class="nbadge">${S.dlvNew}</span>` : ''}`]);
   if (VIEWS.staff && can('admin', 'menejer')) items.push(['staff', 'Xodimlar']);
   if (can('admin', 'menejer')) items.push(['reports', 'Hisobotlar']);
@@ -248,6 +249,7 @@ function softRender(types) {
   if (!S.user || !$('#main')) return;
   const own = { customers: 'customers', staff: 'staff', reservations: 'reservations' }[S.view];
   if (own) { if (types.includes(own) && !document.querySelector('.overlay')) renderView(); return; }
+  if (S.view === 'counter') { if (types.includes('menu')) renderView(); return; } // savat holati saqlanadi, faqat menyu o'zgarsa
   if (S.view === 'floor' && types.includes('reservations')) return renderView();
   if (S.view === 'stock' || S.view === 'reports') { if (types.includes('stock') && S.view === 'stock' && !document.querySelector('.overlay')) renderView(); return; }
   if (types.includes('shift') || types.includes('menu')) return render();
@@ -711,7 +713,9 @@ const opts = (list, label = 'name') => list.map((x) => [x.id, x[label]]);
 const FORMS = {
   products: () => [['name', 'Nomi'], ['price', 'Narxi (so\'m)', 'number'], ['category_id', 'Kategoriya', opts(S.boot.categories)], ['workshop_id', 'Sex (qayerda tayyorlanadi)', opts(S.boot.workshops)],
     ['mxik', 'MXIK kodi (fiskal chek uchun)'], ['unit', "O'lchov birligi"], ['sort', 'Tartib', 'number'],
-    ['delivery', 'Ilovada sotiladi (yetkazib berish)', 'bool'], ['non_returnable', "Qaytarib bo'lmaydi (tayyor taom) — qimmat buyurtmada 100% oldindan to'lov", 'bool'], ['image', 'Rasm (mijoz ilovasi uchun)', 'img']],
+    ['delivery', 'Ilovada sotiladi (yetkazib berish)', 'bool'], ['non_returnable', "Qaytarib bo'lmaydi (tayyor taom) — qimmat buyurtmada 100% oldindan to'lov", 'bool'], ['image', 'Rasm (mijoz ilovasi uchun)', 'img'],
+    ['sold_by', 'Qanday sotiladi', [['dona', 'Dona / porsiya'], ['kg', "Og'irlik bilan (narx — 1 kg uchun)"]]], ['step_g', "Og'irlik qadami, gramm (ilovada; masalan 250)", 'number'],
+    ['barcode', 'Shtrix-kod (skaner uchun)'], ['rx', 'Retsept bilan beriladi (dorixona) — ilovada sotilmaydi', 'bool0']],
   categories: () => [['name', 'Nomi'], ['color', 'Rangi', 'color'], ['sort', 'Tartib', 'number']],
   modifiers: () => [['name', 'Nomi'], ['price', "Qo'shimcha narx", 'number']],
   tables: () => [['name', 'Nomi'], ['hall_id', 'Zal', opts(S.boot.halls)], ['seats', "O'rinlar", 'number'], ['sort', 'Tartib', 'number']],
@@ -783,8 +787,8 @@ A.aedit = async (el) => {
   const row = id ? (S.adminCache || []).find((r) => r.id === id) || {} : {};
   const fields = FORMS[tab]();
   const pr = modal(`<h2>${id ? 'Tahrirlash' : "Qo'shish"}</h2>${fields.map(([k, label, t]) => {
-    const v = row[k] ?? (t === 'color' ? '#2f855a' : t === 'bool' ? 1 : '');
-    if (t === 'bool') return `<label class="chk"><input type="checkbox" name="${k}" ${v ? 'checked' : ''}> ${esc(label)}</label>`;
+    const v = row[k] ?? (t === 'color' ? '#2f855a' : t === 'bool' ? 1 : k === 'step_g' ? 100 : k === 'sold_by' ? 'dona' : '');
+    if (t === 'bool' || t === 'bool0') return `<label class="chk"><input type="checkbox" name="${k}" ${v ? 'checked' : ''}> ${esc(label)}</label>`;
     if (t === 'img') return `<label>${label}</label><div class="row imgpick"><img class="thumb lg" src="${esc(DX.asset(v))}" ${v ? '' : 'hidden'} alt="">
       <label class="btn sm" style="margin:0">📷 Tanlash<input type="file" accept="image/*" hidden></label><button class="btn sm ghost" type="button" data-img-clear ${v ? '' : 'hidden'}>O'chirish</button>
       <input type="hidden" name="${k}" value="__keep__"></div><div class="muted small">Rasm avtomatik kichraytiriladi (≈480 px).</div>`;
@@ -796,7 +800,7 @@ A.aedit = async (el) => {
   if (!r) return;
   const body = { ...(id ? { id } : {}) };
   fields.forEach(([k, , t]) => {
-    if (t === 'bool') { body[k] = !!r[k]; return; }
+    if (t === 'bool' || t === 'bool0') { body[k] = !!r[k]; return; }
     if (t === 'img') { if (r[k] !== '__keep__') body[k] = r[k]; return; } if (r[k] === '' && (k === 'pin' || k === 'mxik' || k === 'unit' || k === 'printer')) { if (k !== 'pin') body[k] = ''; return; } body[k] = t === 'number' || (Array.isArray(t) && k.endsWith('_id')) ? Number(r[k]) : r[k]; });
   run(async () => { await api('POST', `/api/admin/${tab}`, body); await loadBoot(); renderView(); toast('Saqlandi'); });
 };

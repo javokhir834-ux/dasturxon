@@ -51,6 +51,14 @@ Restorandagi kompyuter bulutga **Boshqaruv → Sozlamalar → Bulut sinxronizats
   Buyurtmani qabul qilgach eng yaqin kuryerga avtomatik taklif ketadi. Kuryer plomba rasmini olib oladi, mijozdagi 4 xonali kod bilan topshiradi, chek o'zi yopiladi.
 - Kuryer olgan naqd hisobotda "Kuryer naqdi" bo'lib turadi — u kassaga emas, platforma orqali restoranga keladi.
 
+## Do'kon, dorixona, tez sotuv, kechki chegirma (9-etap)
+
+- **Tez sotuv** (POS → 🛒): stolsiz kassa — skaner (shtrix-kod), tarozi (kg), qaytim. Do'kon, dorixona va olib ketish uchun.
+- **Mahsulot** (Boshqaruv → Menyu): "Qanday sotiladi: dona / kg", og'irlik qadami, shtrix-kod, "Retsept bilan beriladi".
+- **Dorixona:** joy turi "Dorixona" + litsenziya → platforma tasdiqlaydi → ilovada faqat retseptsiz dorilar.
+- **Kechki chegirma** (Yetkazish → 🌙): ortgan taomni chegirma bilan sotish; mijozda alohida bo'lim, faqat oldindan to'lov.
+- **Olib ketish:** mijoz o'zi oladi, yetkazish narxisiz (sozlamada yoqiladi).
+
 ## Mobil ilovalar (Android, iOS)
 
 3 ta ilova: **Mijoz**, **Kuryer**, **Biznes** (POS planshet/telefonda). APK — GitHub Actions'da avtomatik yig'iladi.

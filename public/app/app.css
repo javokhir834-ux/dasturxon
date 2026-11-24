@@ -74,3 +74,9 @@ body.capp { overflow: auto; user-select: auto; background: var(--bg); }
 .stars button { font-size: 36px; color: var(--line); }
 .stars button.on { color: var(--warn); }
 .logo-sm { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--card2); font-size: 22px; flex: none; }
+/* 9-etap: kechki chegirma, olib ketish */
+.deals { display: flex; gap: 10px; overflow-x: auto; padding: 0 16px 14px; scrollbar-width: none; }
+.deal { flex: none; width: 160px; display: flex; flex-direction: column; gap: 4px; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px; }
+.deal .ph { height: 90px; border-radius: 10px; background: var(--card2) center/cover no-repeat; position: relative; }
+.deal .off { position: absolute; top: 6px; left: 6px; background: var(--warn); color: #1d1300; font-weight: 800; font-size: 12px; padding: 2px 7px; border-radius: 999px; }
+.opts.two { grid-template-columns: 1fr 1fr; }

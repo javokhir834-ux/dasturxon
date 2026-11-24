@@ -1,6 +1,6 @@
 {
   "name": "dasturxon",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Restoran/dorixona POS + yetkazib berish platformasi (server, mijoz/kuryer/biznes ilovalari)",
   "private": true,
   "type": "module",

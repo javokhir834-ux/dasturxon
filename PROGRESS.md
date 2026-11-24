@@ -3,9 +3,8 @@
 Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 
 ## Holat
-- **Tugagan:** 1–8 etaplar (POS, ofis, xodimlar, ko'p biznes, bulut, mijoz ilovasi, kuryer, platforma admin) va
-  **8.5 — qayta qurish**: TypeScript + Fastify + Zod backend, 3 ta mobil ilova (Capacitor: mijoz, kuryer, biznes), push xabarlar (2026-11-24)
-- **Keyingi:** 9-etap — Dorixona, do'konlar, kechki chegirma (pastda reja). Undan keyin: PostgreSQL (bulut) — "Texnik qarz" bo'limiga qarang.
+- **Tugagan:** 1–9 etaplar va 8.5 (qayta qurish: TypeScript + Fastify, 3 mobil ilova, push). 9-etap — dorixona, do'kon, tez sotuv, olib ketish, kechki chegirma (2026-11-25)
+- **Keyingi:** 10-etap — Ishga chiqarish (pastda reja). Texnik qarz — "8.5" bo'limida.
 
 ## Arxitektura (8.5 dan boshlab)
 - **Server:** Node.js 22.18+ TypeScript'ni o'zi ishga tushiradi (build yo'q): `npm start` = `node src/server.ts`. Tur tekshiruvi: `npm run check` (tsc).
@@ -274,5 +273,38 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 - iOS: Mac + Xcode + Apple Developer ($99/yil) — `mobile/README.md`.
 - Payme/Click qaytish manzili ilovaga (deep link) — haqiqiy merchant ulanganda.
 
-## 9-etap rejasi (keyingi)
-- Dorixona (faqat retseptsiz, litsenziya va yurist xulosasidan keyin), do'konlar (og'irlik/dona, almashtirish), kechki chegirma moduli (ortgan taom).
+## 9-etapda qilingan (2026-11-25)
+- **Yangi modullar:** `src/modules/retail.ts` (dorixona, do'kon, tez sotuv, buyurtmani o'zgartirish), `src/modules/deals.ts` (kechki chegirma).
+- **Joy turlari:** + `dorixona`, `dokon` (Boshqaruv → Yetkazib berish → Turi). Mijoz ilovasida 💊 Dorixona, 🛒 Do'kon filtrlari.
+- **Dorixona:** mahsulotda `rx` ("Retsept bilan beriladi") — ilovada umuman ko'rinmaydi va API ham rad etadi; kassada (Tez sotuv) faqat
+  "Retsept tekshirildi" belgisi bilan sotiladi va `audit_log` ga `rx_sale` yoziladi. Dorixona ilovada ko'rinishi uchun: platforma sozlamasi
+  `pharmacy_enabled=1` (yurist xulosasidan keyin) + restoran sozlamasida litsenziya raqami va muddati + platforma tasdig'i
+  (`pharmacy_licenses` — bulutda, lokal sinxron ustidan yozmaydi) + muddat o'tmagan. Platforma paneli → 💊 Dorixonalar.
+- **Do'kon:** mahsulot `sold_by` (dona|kg), `step_g` (ilovada qadam, masalan 250 g), `barcode`. Ilovada kg mahsulot og'irlik qadami bilan tanlanadi
+  (pozitsiya: `weight_g`, narx = kg narxi × gramm). Mijoz "mahsulot bo'lmasa": almashtirish / olib tashlash / qo'ng'iroq (`substitution`).
+  Qabul qilishdan oldin do'kon buyurtmani o'zgartiradi (`POST /api/delivery/orders/:id/adjust`: og'irlik, son, olib tashlash, almashtirish) —
+  summa qayta hisoblanadi, ortiqcha to'lov `refund_amount`, o'zgarishlar ro'yxati `changes` mijozga ko'rinadi + push. To'langandan qimmatga o'zgartirib bo'lmaydi.
+- **Tez sotuv** (POS → 🛒 Tez sotuv, `POST /api/counter/sale`): stolsiz kassa — qidiruv, shtrix-kod skaneri (Enter), tarozi (kg kiritish),
+  naqd/karta/Click/Payme, qaytim. Buyurtma `orders.type='counter'`, darhol yopiladi (ombor hisobdan chiqadi, smena hisobotiga tushadi).
+- **Olib ketish** (`mode='pickup'`): yetkazish narxi 0, manzil shart emas, kuryerga taklif qilinmaydi, doskada "🚶 Mijoz oldi". Sozlama `pickup`.
+- **Kechki chegirma** (`evening_deals`): kassir taom + soni + 10–90% + qachongacha (≤12 soat). Mijoz ilovasida bosh sahifada "🌙 Kechki chegirmalar"
+  va joy menyusida; narx 100 so'mga yaxlitlanadi; **faqat oldindan to'lov**; qolgan soni bekor qilinmagan buyurtmalardan hisoblanadi (bekor bo'lsa qaytadi).
+  Lokal serverli restoran: chegirma lokalda yaratiladi → bulutga sinxron (`evening_deals` SPEC da), buyurtmadagi `deal_id` lokalga tarjima qilinadi.
+- Testlar: `tests/retail.cjs` (45), `tests/ui9.py`. Jami API: 11 to'plam.
+
+### 9-etap qarorlari
+- Og'irlikli pozitsiya = 1 qator (qty=1, narx og'irlikka qarab) — ombor/hisobotlar o'zgarmadi. Texkarta (retsept) kg mahsulotga hali qo'llanmaydi.
+- Kechki chegirma faqat dona taomlarga; har taomga bitta faol chegirma.
+- Lokal serverli do'konda buyurtmani o'zgartirish hozircha o'chiq (bulutga uzatish kerak) — mijozga qo'ng'iroq.
+
+### 9-etap ochiq qolganlari
+- Dorixona: yurist xulosasi, litsenziya reestri bilan avtomatik tekshiruv (API bo'lsa), dori yo'riqnomasi maydoni.
+- `refund_amount` (qisman qaytarish) — platforma "Qaytarish" bo'limida qo'lda; Payme/Click qisman qaytarish API ulanganda avtomatik.
+- Tarozi bilan to'g'ridan ulanish (COM/USB) — hozir og'irlik qo'lda kiritiladi; chek printeri tez sotuvda — keyin.
+
+## 10-etap rejasi (keyingi) — Ishga chiqarish
+- Brend: nom, logo, paket ID (`mobile/brand.json`) → Google Play (3 ilova), ichki sinov (internal testing) → ochiq.
+- Play talablari: maxfiylik siyosati sahifasi, foydalanish shartlari (oferta), akkauntni o'chirish (mijoz/kuryer ilovasida), ma'lumotlar xavfsizligi formasi.
+- Firebase (push), haqiqiy SMS (Eskiz/Playmobile adapteri `src/services/sms.ts`), Payme/Click merchant (YaTT/MChJ), fiskal provayder.
+- VPS deploy (deploy/ skriptlar), domen + HTTPS, zaxira nusxa (har kuni, boshqa joyga), monitoring (health, xatolar), yuklama sinovi.
+- Pilot: 2–3 restoran + 1 do'kon Navoiyda, 5–10 kuryer; fikr-mulohaza bo'yicha tuzatishlar.

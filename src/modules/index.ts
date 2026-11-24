@@ -10,6 +10,8 @@ import sync from './sync.ts';
 import delivery from './delivery.ts';
 import courier from './courier.ts';
 import platform from './platform.ts';
+import retail from './retail.ts';
+import deals from './deals.ts';
 
 const MODULES: [string, (ctx: Ctx) => any][] = [
   ['pos', pos], // 1-etap: POS yadro (natijasi ctx ga yoyiladi: loadOrder, closeOrder, ...)
@@ -21,6 +23,8 @@ const MODULES: [string, (ctx: Ctx) => any][] = [
   ['delivery', delivery], // 6-etap: mijoz ilovasi
   ['courier', courier], // 7-etap: kuryerlar
   ['platform', platform], // 8-etap: platforma admin
+  ['retail', retail], // 9-etap: dorixona, do'kon, tez sotuv
+  ['deals', deals], // 9-etap: kechki chegirma
 ];
 
 export function initModules(ctx: Ctx) {

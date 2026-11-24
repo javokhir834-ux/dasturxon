@@ -239,3 +239,28 @@ label.chk input { width: 20px; height: 20px; flex: none; }
 .note-line { padding: 10px 12px; border-radius: 10px; background: var(--card2); border: 1px solid var(--line); margin-top: 8px; }
 .ptl { list-style: none; margin: 6px 0 0; padding: 0; } .ptl li { padding: 2px 0 2px 16px; position: relative; } .ptl li::before { content: '•'; position: absolute; left: 2px; color: var(--accent); }
 .risk { display: inline-block; margin: 2px 4px 0 0; }
+/* 9-etap: Tez sotuv */
+.counter { display: grid; grid-template-columns: 1fr 380px; gap: 14px; align-items: start; }
+.csearch { font-size: 17px; min-height: 48px; }
+.cchips { padding: 10px 0; }
+.cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.ctile { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; padding: 12px; min-height: 84px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); position: relative; }
+.ctile span { color: var(--accent); font-weight: 700; }
+.ctile i { position: absolute; top: 8px; right: 8px; font-style: normal; }
+.ctile.stop { opacity: .45; }
+.cright { position: sticky; top: 0; }
+.clines { max-height: 46vh; overflow: auto; }
+.chips button { padding: 8px 14px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); white-space: nowrap; font-weight: 600; color: var(--muted); }
+.chips button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chips { display: flex; gap: 8px; overflow-x: auto; }
+@media (max-width: 900px) { .counter { grid-template-columns: 1fr; } .cright { position: static; } }
+.step { display: inline-flex; align-items: center; background: var(--card2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.step button { width: 36px; height: 34px; font-size: 19px; font-weight: 700; }
+.step span { min-width: 26px; text-align: center; font-weight: 700; }
+.line { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.sum .r { display: flex; justify-content: space-between; padding: 4px 0; }
+.sum .r.b { font-weight: 800; font-size: 18px; border-top: 1px solid var(--line); margin-top: 6px; padding-top: 10px; }
+.note { padding: 10px 12px; border-radius: 12px; font-size: 13.5px; border: 1px solid var(--line); background: var(--card2); }
+.note.ok { border-color: var(--accent); color: var(--accent); }
+.note.warn { border-color: var(--warn); color: var(--warn); }
+.note.danger { border-color: var(--danger); color: var(--danger); }

@@ -27,7 +27,8 @@ export default function tenant(ctx: Ctx) {
   // Platforma sozlamalari (narxlar so'mda)
   const DEFAULTS = { price_pos: '300000', price_delivery: '200000', trial_days: '14', grace_days: '3', commission_percent: '12',
     courier_min_fee: '8000', offer_seconds: '30', dispatch_radius_km: '7', fund_percent: '1', probation_orders: '20', // 7-etap: kuryer sozlamalari
-    dispute_days: '2', appeal_days: '3', dispute_fine: '20000' }; // 8-etap: shikoyat muddati, e'tiroz muddati, kuryer jarimasi
+    dispute_days: '2', appeal_days: '3', dispute_fine: '20000', // 8-etap: shikoyat muddati, e'tiroz muddati, kuryer jarimasi
+    pharmacy_enabled: '0' }; // 9-etap: dorixonalar (yurist xulosasidan keyin 1)
   const setting = (k) => db.prepare('SELECT value FROM platform_settings WHERE key=?').get(k)?.value ?? DEFAULTS[k];
   const setSetting = (k, v) => db.prepare('INSERT INTO platform_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k, String(v));
 

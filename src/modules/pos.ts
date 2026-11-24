@@ -504,7 +504,7 @@ export default function pos(ctx: Ctx) {
     tables: { hall_id: 'ref:halls', name: 's', seats: 'i', sort: 'i', active: 'b' },
     workshops: { name: 's', printer: 'o', active: 'b' },
     categories: { name: 's', color: 'o', sort: 'i', active: 'b' },
-    products: { category_id: 'ref:categories', workshop_id: 'ref:workshops', name: 's', price: 'i', mxik: 'o', unit: 'o', sort: 'i', in_stop: 'b', active: 'b', delivery: 'b', non_returnable: 'b', image: 'img' },
+    products: { category_id: 'ref:categories', workshop_id: 'ref:workshops', name: 's', price: 'i', mxik: 'o', unit: 'o', sort: 'i', in_stop: 'b', active: 'b', delivery: 'b', non_returnable: 'b', image: 'img', rx: 'b', sold_by: 'enum:dona,kg', step_g: 'i', barcode: 'o' },
     modifiers: { name: 's', price: 'i', active: 'b' },
     users: { name: 's', role: 'role', active: 'b', pay_type: 'enum:none,hourly,monthly', rate: 'i', percent: 'i', percent_base: 'enum:sales,service' },
   };

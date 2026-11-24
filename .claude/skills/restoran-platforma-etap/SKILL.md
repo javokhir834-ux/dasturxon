@@ -34,7 +34,7 @@ U "keyingi etapga o't" desa — savol bermay, keyingi etapni TO'LIQ qur. Qarorla
 - **7-etap — Kuryer ilovasi:** ro'yxat (MyID, hujjatlar, test, sinov davri), buyurtma taqsimlash (taksi kabi), GPS, 4 xonali topshirish kodi, plomba rasmi, naqd limit va kunlik hisob, depozit, reyting (4.5 dan past — ogohlantirish/blok), darajalar va bonuslar, no-show tartibi (qo'ng'iroq + 10 daqiqa taymer + GPS + rasm → kuryer haqini oladi, taom kuryerda qoladi).
 - **8-etap — Platforma admin:** komissiya (masalan 12%), kafolat fondi (komissiyadan ~1%), nizolar (isbotlar: restoran/kuryer/mijoz rasmlari, GPS; aybdor jadvali; mijozga darhol kompensatsiya, aybdordan undirish; kuryerga bosqichli choralar, e'tiroz huquqi), umumiy qora ro'yxat, mijoz firibgarligidan himoya.
 - **8.5 — Qayta qurish (tugagan):** TypeScript + Fastify + Zod, 3 mobil ilova (Capacitor), push xabarlar.
-- **9-etap — Qo'shimcha toifalar:** dorixona (faqat retseptsiz, yuristdan keyin), do'konlar; kechki chegirma moduli (ortgan taom).
+- **9-etap (tugagan) — Qo'shimcha toifalar:** dorixona (faqat retseptsiz, yuristdan keyin), do'konlar; kechki chegirma moduli (ortgan taom).
 - **10-etap — Ishga chiqarish:** Google Play (mijoz, kuryer, biznes), Firebase push, haqiqiy SMS/Payme/Click, VPS deploy, ommaviy sinov.
 - **Keyin (yuk oshganda):** PostgreSQL (bulut), WebSocket, iOS App Store.
 

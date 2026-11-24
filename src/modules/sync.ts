@@ -34,6 +34,7 @@ export default function sync(ctx: Ctx) {
     timesheets: { user_id: 'users' },
     payroll_payments: { user_id: 'users', by_user: 'users' },
     audit_log: { user_id: 'users' },
+    evening_deals: { product_id: 'products', created_by: 'users' }, // 9-etap
   };
   const TABLES = Object.keys(SPEC);
 
