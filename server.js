@@ -681,7 +681,7 @@ require('./courier')({ db, route, int, str, fail, now, tenant, broadcast, dlv: d
 require('./platform')({ db, route, ROLES, int, str, fail, audit, now, tenant, broadcast, dlv: delivery }); // 8-etap: platforma admin
 
 // ---------- HTTP server ----------
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
 
 // Mahsulot rasmi: bazada data URL, tashqariga oddiy rasm sifatida (kesh bilan) — bootstrap/menyu yengil bo'ladi
 const imgVer = (data) => require('crypto').createHash('md5').update(data).digest('hex').slice(0, 10);

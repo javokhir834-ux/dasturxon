@@ -141,3 +141,10 @@ html { background: #f6f3ee; }
 .stars button { font-size: 36px; color: var(--line); }
 .stars button.on { color: #ffb400; }
 .logo-sm { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--tc, var(--card2)); font-size: 22px; flex: none; }
+
+/* Foto muqovalar va SVG ikonkalar */
+.cover.photo { background-size: cover; background-position: center; background-color: var(--card2); }
+.ptype i svg { width: 40px; height: 40px; }
+.ti { display: inline-flex; align-items: center; gap: 5px; }
+.ti svg { flex: none; }
+.empty .ic svg { display: inline-block; }

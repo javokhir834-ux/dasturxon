@@ -248,6 +248,8 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 - Bosh sahifa: salomlashuv, qidiruv (nom/tavsif/tur bo'yicha, klientda), banner, rangli toifa plitkalari (har biri joylar soni bilan), katta joy kartalari (rangli muqova, vaqt, yetkazish narxi, ochiq/yopiq).
 - Yangi joy turlari: milliy, pizza, sushi, nonvoyxona, dokon (server `delivery.js` PLACE_TYPES, POS `public/delivery.js` PLACE_TYPES, mijoz `public/app/client.js` TYPES — uchalasi bir xil bo'lishi kerak). Dorixona va Gullar "tez kunda" plitkasi sifatida.
 - Joy sahifasi: rangli muqova, mahsulot rasmisiz bo'lsa joy turi rangidagi fon.
+- Toifa plitkalarida o'zimiz chizgan SVG ikonkalar (`public/app/icons.js`), joy kartasi va sahifasi muqovasida turga qarab haqiqiy foto (`public/app/img/places/<tur>.jpg`, Pexels litsenziyasi, manbalar `public/app/img/CREDITS.md`). Server `.jpg/.webp` MIME turlarini beradi.
+- Keyin: restoran o'z muqova rasmini yuklashi (hozir tur bo'yicha umumiy foto).
 
 ## 9-etap rejasi (keyingi)
 - Dorixona (faqat retseptsiz, litsenziya va yurist xulosasidan keyin), do'konlar (og'irlik/dona, almashtirish), kechki chegirma moduli (ortgan taom).
