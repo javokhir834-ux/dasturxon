@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Dasturxon Biznes</string>
-    <string name="title_activity_main">Dasturxon Biznes</string>
-    <string name="package_name">uz.dasturxon.business</string>
-    <string name="custom_url_scheme">uz.dasturxon.business</string>
+    <string name="app_name">FastHub Biznes</string>
+    <string name="title_activity_main">FastHub Biznes</string>
+    <string name="package_name">uz.fasthub.business</string>
+    <string name="custom_url_scheme">uz.fasthub.business</string>
 </resources>

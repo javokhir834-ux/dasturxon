@@ -1,4 +1,4 @@
-# Dasturxon POS — restoran boshqaruv tizimi
+# FastHub Uz (Dasturxon) POS — restoran boshqaruv tizimi
 
 Restoranning o'z kompyuterida ishlaydigan server. Planshet va telefonlar Wi-Fi orqali ulanadi.
 Internet uzilsa ham ishlayveradi, chunki hammasi restoran ichidagi tarmoqda.

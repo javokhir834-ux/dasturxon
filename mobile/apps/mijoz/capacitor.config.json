@@ -1,6 +1,6 @@
 {
-  "appId": "uz.dasturxon.app",
-  "appName": "Dasturxon",
+  "appId": "uz.fasthub.app",
+  "appName": "FastHub Uz",
   "webDir": "www",
   "server": {
     "androidScheme": "https",

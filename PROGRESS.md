@@ -4,6 +4,7 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 
 ## Holat
 - **Tugagan:** 1–9 etaplar va 8.5 (qayta qurish: TypeScript + Fastify, 3 mobil ilova, push). 9-etap — dorixona, do'kon, tez sotuv, olib ketish, kechki chegirma (2026-11-25)
+- **Brend:** FastHub Uz (2026-11-25) — ilovalar FastHub Uz / FastHub Kuryer / FastHub Biznes, paket ID `uz.fasthub.*`. Ichki kod nomi `dasturxon`.
 - **Keyingi:** 10-etap — Ishga chiqarish (pastda reja). Texnik qarz — "8.5" bo'limida.
 
 ## Arxitektura (8.5 dan boshlab)
@@ -263,7 +264,7 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 ### 8.5 qarorlari
 - Native ilova = Capacitor (bitta veb kod, Android+iOS). Veb fayllar ilova ichida (oflayn ochiladi), API — tanlangan serverda.
 - Lokal restoran serveri `http://` (Wi-Fi) — ilovalarda cleartext/mixed content ruxsat. Ommaviy versiyada mijoz/kuryer faqat HTTPS bulutga ulanadi.
-- Paket ID: `uz.dasturxon.app|courier|business` — nom tanlangach `brand.json` da o'zgartiriladi (Play'ga chiqishdan OLDIN, keyin o'zgarmaydi).
+- Paket ID: `uz.fasthub.app|courier|business` — nom tanlangach `brand.json` da o'zgartiriladi (Play'ga chiqishdan OLDIN, keyin o'zgarmaydi).
 
 ### Texnik qarz (keyingi bosqichlar)
 - **PostgreSQL (bulut):** barcha so'rovlar sinxron `db.prepare()` — Postgres asinxron, ya'ni har handler `async/await` ga o'tadi (~4000 qator). Tavsiya: real yuk

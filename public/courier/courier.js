@@ -94,7 +94,7 @@ const logoutBtn = () => `<button class="btn sm" data-a="logout">Chiqish</button>
 const tabs = () => `<nav class="tabsb">${[['main', '🛵 Ish'], ['history', '💰 Hisob'], ['rules', '📋 Qoidalar']].map(([k, n]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}">${n}</button>`).join('')}</nav>`;
 
 function viewLogin(a) {
-  a.innerHTML = head('Dasturxon Kuryer') + `<div class="csec"><div class="panel"><h3>Kuryer bo'lib ishlash</h3>
+  a.innerHTML = head('FastHub Kuryer') + `<div class="csec"><div class="panel"><h3>Kuryer bo'lib ishlash</h3>
     <p class="muted small">O'z vaqtingizda ishlaysiz, har buyurtma uchun haq olasiz. Telefon raqamingiz bilan kiring.</p>
     <input id="ph" type="tel" inputmode="tel" placeholder="+998 90 123 45 67" value="${esc(store.get('dx_kphone') || '')}">
     <button class="btn primary block big" style="margin-top:12px" data-a="otp">Kod olish</button>

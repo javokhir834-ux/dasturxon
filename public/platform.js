@@ -21,7 +21,7 @@ const PLATFORM_UI = (() => {
   };
   const shell = (title, right, body) => {
     document.body.classList.add('scroll');
-    $('#app').innerHTML = `<div class="shell"><header class="top"><div class="brand"><span class="dot"></span>Dasturxon</div><span class="muted">${title}</span><div class="grow"></div>${right}</header>
+    $('#app').innerHTML = `<div class="shell"><header class="top"><div class="brand"><span class="dot"></span>FastHub</div><span class="muted">${title}</span><div class="grow"></div>${right}</header>
       <div class="page" id="pg">${body}</div></div>`;
   };
   const H = {}; // harakatlar

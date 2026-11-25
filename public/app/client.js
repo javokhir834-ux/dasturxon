@@ -1,7 +1,7 @@
 // Dasturxon — mijoz ilovasi (6-etap): joylar, menyu, savat, to'lov, buyurtma holati. Build'siz vanilla JS.
 'use strict';
 
-const APP_NAME = 'Dasturxon';
+const APP_NAME = 'FastHub Uz';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = (n) => (Number(n) || 0).toLocaleString('ru-RU').replace(/\s/g, ' ');

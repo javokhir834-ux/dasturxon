@@ -1,4 +1,7 @@
-# Dasturxon — restoran/dorixona POS + yetkazib berish platformasi (server + 3 mobil ilova)
+# FastHub Uz (kod nomi: Dasturxon) — restoran/dorixona/do'kon POS + yetkazib berish platformasi (server + 3 mobil ilova)
+
+Brend (2026-11-25): **FastHub Uz**. Ilovalar: *FastHub Uz* (mijoz), *FastHub Kuryer*, *FastHub Biznes*; paket ID `uz.fasthub.app|courier|business` (`mobile/brand.json`).
+Kodda ichki nom `dasturxon` qoladi (repo, `/api/health` → `app: 'dasturxon'`, localStorage `dx_*`) — o'zgartirmang.
 
 Egasi: Javohir (Navoiy). Javoblar **o'zbek tilida, qisqa**. Token tejash muhim.
 

@@ -2,9 +2,9 @@
 
 | Ilova | Papka | Paket ID | Ochiladigan sahifa |
 |---|---|---|---|
-| Mijoz | `apps/mijoz` | `uz.dasturxon.app` | `/app` |
-| Kuryer | `apps/kuryer` | `uz.dasturxon.courier` | `/courier` (fonda GPS) |
-| Biznes (POS: restoran, kafe, dorixona) | `apps/biznes` | `uz.dasturxon.business` | POS |
+| Mijoz | `apps/mijoz` | `uz.fasthub.app` | `/app` |
+| Kuryer | `apps/kuryer` | `uz.fasthub.courier` | `/courier` (fonda GPS) |
+| Biznes (POS: restoran, kafe, dorixona) | `apps/biznes` | `uz.fasthub.business` | POS |
 
 Veb qismi `../public` dan olinadi — ilova va sayt bitta kod. Birinchi ochilishda **server manzili** so'raladi
 (lokal restoran serveri `http://192.168.x.x:8080` yoki bulut `https://...`). Keyin o'zgartirish: kirish ekranida pastdagi **⚙ Server**.

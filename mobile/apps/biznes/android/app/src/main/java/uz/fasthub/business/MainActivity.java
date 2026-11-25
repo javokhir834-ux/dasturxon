@@ -1,4 +1,4 @@
-package uz.dasturxon.app;
+package uz.fasthub.business;
 
 import com.getcapacitor.BridgeActivity;
 

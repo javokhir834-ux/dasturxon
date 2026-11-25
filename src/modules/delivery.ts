@@ -67,7 +67,7 @@ export default function delivery(ctx: Ctx) {
     const code = String(crypto.randomInt(10000, 99999));
     db.prepare('INSERT INTO otp_codes (phone,code_hash,expires,attempts,sent) VALUES (?,?,?,0,?) ON CONFLICT(phone) DO UPDATE SET code_hash=excluded.code_hash, expires=excluded.expires, attempts=0, sent=excluded.sent')
       .run(key, tokHash(key + code), Date.now() + 5 * 60000, JSON.stringify([...sent, Date.now()]));
-    const r = await sms.send(phone, `Dasturxon tasdiqlash kodi: ${code}`);
+    const r = await sms.send(phone, `FastHub tasdiqlash kodi: ${code}`);
     if (!r.ok) fail(502, 'SMS yuborilmadi: ' + r.reason);
     return { ok: true, ...(sms.MODE === 'test' ? { dev_code: code } : {}) };
   }

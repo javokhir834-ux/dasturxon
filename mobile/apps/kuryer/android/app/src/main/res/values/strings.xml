@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Dasturxon Kuryer</string>
-    <string name="title_activity_main">Dasturxon Kuryer</string>
-    <string name="package_name">uz.dasturxon.courier</string>
-    <string name="custom_url_scheme">uz.dasturxon.courier</string>
+    <string name="app_name">FastHub Kuryer</string>
+    <string name="title_activity_main">FastHub Kuryer</string>
+    <string name="package_name">uz.fasthub.courier</string>
+    <string name="custom_url_scheme">uz.fasthub.courier</string>
 </resources>

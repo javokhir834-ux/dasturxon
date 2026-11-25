@@ -1,6 +1,6 @@
 {
-  "appId": "uz.dasturxon.business",
-  "appName": "Dasturxon Biznes",
+  "appId": "uz.fasthub.business",
+  "appName": "FastHub Biznes",
   "webDir": "www",
   "server": {
     "androidScheme": "https",

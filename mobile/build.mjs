@@ -10,7 +10,7 @@ const brand = JSON.parse(fs.readFileSync(path.join(DIR, 'brand.json'), 'utf8'));
 const pkg = JSON.parse(fs.readFileSync(path.join(DIR, '..', 'package.json'), 'utf8'));
 
 export const APPS = {
-  mijoz: { id: 'app', title: brand.name, entry: '/app/index.html' },
+  mijoz: { id: 'app', title: brand.fullName || brand.name, entry: '/app/index.html' },
   kuryer: { id: 'courier', title: `${brand.name} Kuryer`, entry: '/courier/index.html', backgroundGps: true },
   biznes: { id: 'business', title: `${brand.name} Biznes`, entry: '/pos.html' },
 };

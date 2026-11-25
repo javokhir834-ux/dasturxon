@@ -1,6 +1,6 @@
 {
-  "appId": "uz.dasturxon.courier",
-  "appName": "Dasturxon Kuryer",
+  "appId": "uz.fasthub.courier",
+  "appName": "FastHub Kuryer",
   "webDir": "www",
   "server": {
     "androidScheme": "https",
