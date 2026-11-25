@@ -244,9 +244,9 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 - Ko'p filialli ega uchun barcha filiallar aktlari bir joyda (ega kabineti) — keyin.
 
 ## 8.1 — mijoz ilovasi dizayni
-- Mijoz ilovasi o'z yorug' temasiga o'tdi ( ichida tokenlar qayta belgilangan; telefon qorong'i rejimda bo'lsa — qorong'i variant). POS va kuryer dizayni o'zgarmadi.
+- Mijoz ilovasi o'z yorug' temasiga o'tdi (`public/app/app.css` ichida tokenlar qayta belgilangan; telefon qorong'i rejimda bo'lsa — qorong'i variant). POS va kuryer dizayni o'zgarmadi.
 - Bosh sahifa: salomlashuv, qidiruv (nom/tavsif/tur bo'yicha, klientda), banner, rangli toifa plitkalari (har biri joylar soni bilan), katta joy kartalari (rangli muqova, vaqt, yetkazish narxi, ochiq/yopiq).
-- Yangi joy turlari: milliy, pizza, sushi, nonvoyxona, dokon (server , POS sozlamasi, mijoz  — uchalasi bir xil bo'lishi kerak). Dorixona va Gullar "tez kunda" plitkasi sifatida.
+- Yangi joy turlari: milliy, pizza, sushi, nonvoyxona, dokon (server `delivery.js` PLACE_TYPES, POS `public/delivery.js` PLACE_TYPES, mijoz `public/app/client.js` TYPES — uchalasi bir xil bo'lishi kerak). Dorixona va Gullar "tez kunda" plitkasi sifatida.
 - Joy sahifasi: rangli muqova, mahsulot rasmisiz bo'lsa joy turi rangidagi fon.
 
 ## 9-etap rejasi (keyingi)
