@@ -1,6 +1,6 @@
 {
   "name": "dasturxon-pos",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Restoran boshqaruv tizimi (POS) + yetkazib berish — 8-etap",
   "main": "server.js",
   "private": true,

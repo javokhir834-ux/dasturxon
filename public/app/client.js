@@ -1,4 +1,4 @@
-// Dasturxon — mijoz ilovasi (6-etap): joylar, menyu, savat, to'lov, buyurtma holati. Build'siz vanilla JS.
+// Dasturxon — mijoz ilovasi (6-etap, yangi dizayn): joylar, menyu, savat, to'lov, buyurtma holati. Build'siz vanilla JS.
 'use strict';
 
 const APP_NAME = 'Dasturxon';
@@ -14,8 +14,17 @@ const store = {
 };
 const fmtPhone = (p) => (p && p.length === 12 ? `+${p.slice(0, 3)} ${p.slice(3, 5)} ${p.slice(5, 8)} ${p.slice(8, 10)} ${p.slice(10)}` : p || '');
 
-const TYPES = [['', 'Hammasi', '✨'], ['restoran', 'Restoran', '🍽'], ['fastfood', 'Fastfud', '🍔'], ['kafe', 'Kafe', '☕'], ['choyxona', 'Choyxona', '🫖'], ['shirinlik', 'Shirinliklar', '🍰']];
+// Joy turlari: kalit, nom, belgi, plitka rangi. Kalitlar server (delivery.js PLACE_TYPES) bilan bir xil bo'lishi shart.
+const TYPES = [['', 'Hammasi', '✨', '#ff5a36'], ['restoran', 'Restoran', '🍽', '#ff7a45'], ['milliy', 'Milliy taomlar', '🥘', '#e0a100'], ['fastfood', 'Fastfud', '🍔', '#f5b400'],
+  ['pizza', 'Pitsa', '🍕', '#ef4b4b'], ['sushi', 'Sushi', '🍣', '#3d8bfd'], ['kafe', 'Kafe', '☕', '#a0703c'], ['choyxona', 'Choyxona', '🫖', '#1fa971'],
+  ['shirinlik', 'Shirinliklar', '🍰', '#e65aa8'], ['nonvoyxona', 'Non va pishiriq', '🥖', '#c98a2b'], ['dokon', "Do'konlar", '🛒', '#6a5cff']];
+const SOON = [['Dorixona', '💊', '#2bb3c0'], ['Gullar', '💐', '#d94f8a']];
 const TYPE_ICON = Object.fromEntries(TYPES.map(([k, , i]) => [k, i]));
+const TYPE_NAME = Object.fromEntries(TYPES.map(([k, n]) => [k, n]));
+// Yorug' va qorong'i temada ham ishlaydigan och rang (rang + karta foni aralashmasi).
+const tint = (hue, pct = 22) => `--tc:color-mix(in srgb, ${hue} ${pct}%, var(--card))`;
+const typeTint = (t) => tint((TYPES.find((x) => x[0] === t) || TYPES[1])[3]);
+const greet = () => { const h = new Date().getHours(); return h < 5 ? 'Xayrli tun' : h < 11 ? 'Xayrli tong' : h < 17 ? 'Xayrli kun' : 'Xayrli kech'; };
 const ST = {
   awaiting_payment: ["To'lov kutilmoqda", '💳', 'warn'], new: ['Restoran tasdiqlashini kutmoqda', '⏳', 'info'], accepted: ['Tayyorlanmoqda', '👨‍🍳', 'info'],
   ready: ['Tayyor, kuryerga berilmoqda', '📦', 'ok'], on_way: ["Yo'lda", '🛵', 'ok'], delivered: ['Yetkazildi', '✅', 'ok'],
@@ -23,7 +32,7 @@ const ST = {
 };
 const PROV = { test: "Sinov to'lovi (test)", click: 'Click', payme: 'Payme', cash: 'Naqd — kuryerga' };
 
-const S = { token: store.get('dx_ctoken'), me: null, type: '', places: null, menu: null, cat: null, quote: null, pay: null, payOnline: false, after: '#orders', poll: null, geo: store.get('dx_geo', true) };
+const S = { token: store.get('dx_ctoken'), me: null, type: '', q: '', places: null, menu: null, cat: null, quote: null, pay: null, payOnline: false, after: '#orders', poll: null, geo: store.get('dx_geo', true) };
 const cart = () => store.get('dx_cart', true) || { place: null, place_name: '', items: [] };
 const saveCart = (c) => store.set('dx_cart', c.items.length ? c : null);
 const cartCount = (c = cart()) => c.items.reduce((t, i) => t + i.qty, 0);
@@ -57,15 +66,31 @@ const view = (html, keep) => { const y = window.scrollY; $('#app').innerHTML = h
 // ---------- Ekranlar ----------
 async function viewHome() {
   const meBtn = `<button class="btn sm" data-a="go" data-v="${S.token ? '#orders' : '#login'}">${S.token ? '🧾 Buyurtmalarim' : 'Kirish'}</button>`;
-  view(topbar(`<span style="color:var(--accent)">●</span> ${APP_NAME}`, '', meBtn) + `<div class="chips">${TYPES.map(([k, n, i]) => `<button class="${S.type === k ? 'on' : ''}" data-a="type" data-v="${k}">${i} ${n}</button>`).join('')}</div><div id="list"><div class="empty">Yuklanmoqda…</div></div>`);
-  const list = await run(() => api('GET', '/api/c/places' + (S.type ? '?type=' + S.type : '')));
+  view(topbar(`<span class="brandmark">🍽</span>${APP_NAME}`, '', meBtn) + `<div class="hello"><h2>${greet()}!<br>Bugun nima <em>yeymiz?</em></h2></div>
+    <div class="search"><input id="q" type="search" placeholder="Restoran yoki taom turi" value="${esc(S.q)}" autocomplete="off"></div>
+    <div class="promo"><b>Sevimli taomlaringiz eshigingizgacha</b><span>Kuryer kuzatuvi, xavfsiz to'lov va kafolat fondi</span><div class="art">🛵</div></div>
+    <div class="sect"><h3>Toifalar</h3></div><div class="ptypes" id="cats"></div>
+    <div class="sect"><h3 id="ttl">Hammasi</h3><span class="muted small" id="cnt"></span></div><div id="list"><div class="empty">Yuklanmoqda…</div></div>`);
+  const list = await run(() => api('GET', '/api/c/places'));
   if (!list) return;
-  $('#list').innerHTML = list.length ? list.map((p) => `<button class="place ${p.open ? '' : 'closed'}" data-a="go" data-v="#p/${esc(p.code)}">
-    <div class="logo">${TYPE_ICON[p.type] || esc(p.name[0])}</div>
-    <div class="grow"><b>${esc(p.name)}</b><div class="muted small">${esc(p.description || p.address || '')}</div>
-      <div class="meta"><span>⏱ ${p.prep_minutes}–${p.prep_minutes + 20} daq</span><span>🛵 ${p.delivery_fee ? som(p.delivery_fee) : 'bepul'}</span>${p.min_order ? `<span>min. ${som(p.min_order)}</span>` : ''}
-      ${p.open ? '' : '<span class="chip danger">Hozir yopiq</span>'}</div></div></button>`).join('')
-    : `<div class="empty"><div class="ic">🍽</div>Hozircha bu turdagi joylar yo'q</div>`;
+  S.places = list; renderPlaces();
+}
+function renderPlaces() {
+  if (!$('#cats')) return;
+  const all = S.places || [], q = S.q.trim().toLowerCase();
+  const count = (k) => all.filter((p) => !k || p.type === k).length;
+  $('#cats').innerHTML = TYPES.map(([k, n, i, hue]) => `<button class="ptype ${S.type === k ? 'on' : ''}" data-a="type" data-v="${k}" style="${tint(hue)}"><i>${i}</i>${n}<small>${count(k) || '—'}</small></button>`).join('')
+    + SOON.map(([n, i, hue]) => `<button class="ptype soon" data-a="soon" style="${tint(hue)}"><i>${i}</i>${n}<small>tez kunda</small></button>`).join('');
+  const shown = all.filter((p) => (!S.type || p.type === S.type) && (!q || [p.name, p.description, TYPE_NAME[p.type]].some((x) => String(x || '').toLowerCase().includes(q))));
+  $('#ttl').textContent = TYPE_NAME[S.type] || 'Hammasi';
+  $('#cnt').textContent = shown.length ? shown.length + ' ta joy' : '';
+  $('#list').innerHTML = shown.length ? shown.map((p) => `<button class="place ${p.open ? '' : 'closed'}" data-a="go" data-v="#p/${esc(p.code)}">
+    <div class="cover" style="${typeTint(p.type)}"><span class="em">${TYPE_ICON[p.type] || '🍽'}</span><span class="badge">⏱ ${p.prep_minutes}–${p.prep_minutes + 20} daq</span>
+      <span class="fee">${p.delivery_fee ? '🛵 ' + som(p.delivery_fee) : 'Bepul yetkazish'}</span></div>
+    <div class="bd"><b>${esc(p.name)}</b><div class="muted small">${esc(p.description || p.address || TYPE_NAME[p.type] || '')}</div>
+      <div class="meta"><span>${TYPE_ICON[p.type] || ''} ${esc(TYPE_NAME[p.type] || p.type)}</span>${p.min_order ? `<span>min. ${som(p.min_order)}</span>` : ''}
+      ${p.open ? '<span style="color:var(--ok)">● Ochiq</span>' : '<span class="chip danger">Hozir yopiq</span>'}</div></div></button>`).join('')
+    : `<div class="empty"><div class="ic">${q ? '🔎' : TYPE_ICON[S.type] || '🍽'}</div>${q ? 'Hech narsa topilmadi' : "Hozircha bu turdagi joylar yo'q"}</div>`;
 }
 
 async function viewPlace(code) {
@@ -82,16 +107,16 @@ function renderPlace(keep) {
   const cats = S.cat ? m.categories.filter((x) => x.id === S.cat) : m.categories;
   const card = (x) => {
     const q = qtyOf(x.id);
-    return `<div class="pcard ${x.in_stop ? 'stop' : ''}"><div class="ph" ${x.image ? `style="background-image:url('${esc(x.image)}')"` : ''}>${x.image ? '' : esc(x.name[0])}</div>
+    return `<div class="pcard ${x.in_stop ? 'stop' : ''}"><div class="ph" style="${x.image ? `background-image:url('${esc(x.image)}')` : typeTint(p.type)}">${x.image ? '' : esc(x.name[0])}</div>
       <div class="bd"><div class="nm">${esc(x.name)}</div><div class="pr">${som(x.price)}</div>
       ${x.in_stop ? '<span class="muted small">Hozir mavjud emas</span>' : !p.open ? '' : q
         ? `<div class="step addbtn"><button data-a="qty" data-id="${x.id}" data-d="-1">−</button><span>${q}</span><button data-a="qty" data-id="${x.id}" data-d="1">+</button></div>`
         : `<button class="btn sm primary addbtn" data-a="qty" data-id="${x.id}" data-d="1">+ Savatga</button>`}</div></div>`;
   };
-  view(topbar(esc(p.name), '#') + `<div class="hero"><div class="muted">${esc(p.description || '')}</div>
-    <div class="meta"><span class="chip">${TYPE_ICON[p.type] || ''} ${esc(TYPES.find((t) => t[0] === p.type)?.[1] || p.type)}</span><span class="chip">⏱ ${p.prep_minutes}–${p.prep_minutes + 20} daq</span>
+  view(topbar(esc(p.name), '#') + `<div class="hero"><div class="cover" style="${typeTint(p.type)}">${TYPE_ICON[p.type] || '🍽'}</div><div class="info"><h2>${esc(p.name)}</h2><div class="muted">${esc(p.description || '')}</div>
+    <div class="meta"><span class="chip">${TYPE_ICON[p.type] || ''} ${esc(TYPE_NAME[p.type] || p.type)}</span><span class="chip">⏱ ${p.prep_minutes}–${p.prep_minutes + 20} daq</span>
     <span class="chip">🛵 ${p.delivery_fee ? som(p.delivery_fee) : 'Bepul yetkazish'}</span>${p.min_order ? `<span class="chip">min. ${som(p.min_order)}</span>` : ''}${p.open ? '' : '<span class="chip danger">Hozir buyurtma qabul qilmayapti</span>'}</div>
-    ${p.address ? `<div class="muted small" style="margin-top:8px">📍 ${esc(p.address)}</div>` : ''}</div>
+    ${p.address ? `<div class="muted small" style="margin-top:8px">📍 ${esc(p.address)}</div>` : ''}</div></div>
     <div class="chips stickychips"><button class="${!S.cat ? 'on' : ''}" data-a="cat" data-v="">Hammasi</button>${m.categories.map((x) => `<button class="${S.cat === x.id ? 'on' : ''}" data-a="cat" data-v="${x.id}">${esc(x.name)}</button>`).join('')}</div>
     ${cats.map((ct) => `<h3 class="catttl">${esc(ct.name)}</h3><div class="pgrid">${m.products.filter((x) => x.category_id === ct.id).map(card).join('')}</div>`).join('')
       || `<div class="empty"><div class="ic">📋</div>Menyu hali to'ldirilmagan</div>`}`, keep);
@@ -285,7 +310,8 @@ function route() {
 const A = {
   go: (el) => go(el.dataset.v),
   back: (el) => go(el.dataset.v),
-  type: (el) => { S.type = el.dataset.v; viewHome(); },
+  type: (el) => { S.type = el.dataset.v; renderPlaces(); },
+  soon: () => toast("Bu toifa tez orada qo'shiladi"),
   cat: (el) => { S.cat = Number(el.dataset.v) || null; renderPlace(); },
   qty: async (el) => {
     const m = S.menu, p = m.place, x = m.products.find((y) => y.id === Number(el.dataset.id)); if (!x) return;
@@ -379,5 +405,6 @@ const A = {
 };
 document.addEventListener('click', (e) => { const el = e.target.closest('[data-a]'); if (el && A[el.dataset.a]) { e.preventDefault(); A[el.dataset.a](el, e); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'code') A.login(); if (e.key === 'Enter' && e.target.id === 'ph') A.otp($('[data-a="otp"]')); });
+document.addEventListener('input', (e) => { if (e.target.id === 'q') { S.q = e.target.value; renderPlaces(); } });
 window.addEventListener('hashchange', route);
 window.addEventListener('DOMContentLoaded', route);

@@ -41,6 +41,8 @@ module.exports = function delivery(ctx) {
   ['debt_amount INTEGER DEFAULT 0', 'settlement_id INTEGER'].forEach((c) => addCol('delivery_orders', c));
   sync.installTriggers(); // delivery_settings ham bulutga sinxronlanadi
 
+  // Joy turlari (mijoz ilovasi public/app/client.js TYPES va POS public/delivery.js PLACE_TYPES bilan bir xil).
+  const PLACE_TYPES = ['restoran', 'milliy', 'fastfood', 'pizza', 'sushi', 'kafe', 'choyxona', 'shirinlik', 'nonvoyxona', 'dokon'];
   const DEF = { delivery_by: 'platform', lat: null, lng: null, enabled: 0, open: 1, place_type: 'restoran', address: '', description: '', min_order: 0, delivery_fee: 10000, prep_minutes: 30, prepay_mode: 'mixed', cash_limit: 300000, partial_percent: 0, trusted_after: 5, expensive_limit: 500000 };
   const settingsOf = (b) => ({ ...DEF, ...(db.prepare('SELECT * FROM delivery_settings WHERE business_id=?').get(b) || {}) });
   const isReplica = (b) => !!db.prepare("SELECT 1 FROM businesses WHERE id=? AND sync_key!='' AND sync_url!=''").get(b);
@@ -376,7 +378,7 @@ module.exports = function delivery(ctx) {
     const b = user.business_id; const cur = settingsOf(b);
     const v = {
       enabled: body.enabled != null ? (body.enabled ? 1 : 0) : cur.enabled, open: body.open != null ? (body.open ? 1 : 0) : cur.open,
-      place_type: body.place_type != null ? (['restoran', 'fastfood', 'kafe', 'choyxona', 'shirinlik'].includes(body.place_type) ? body.place_type : fail(400, "Turi noto'g'ri")) : cur.place_type,
+      place_type: body.place_type != null ? (PLACE_TYPES.includes(body.place_type) ? body.place_type : fail(400, "Turi noto'g'ri")) : cur.place_type,
       address: body.address != null ? str(body.address, 'Manzil', { required: false, max: 200 }) : cur.address,
       description: body.description != null ? str(body.description, 'Tavsif', { required: false, max: 300 }) : cur.description,
       prepay_mode: body.prepay_mode != null ? (['mixed', 'full', 'cash'].includes(body.prepay_mode) ? body.prepay_mode : fail(400, "To'lov rejimi noto'g'ri")) : cur.prepay_mode,

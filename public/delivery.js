@@ -4,7 +4,7 @@
 S.dlv = []; S.dlvNew = 0;
 const DST = { new: ['Yangi', 'info'], accepted: ['Tayyorlanmoqda', 'warn'], ready: ['Tayyor', 'ok'], on_way: ["Yo'lda", 'ok'], delivered: ['Yetkazildi', 'ok'],
   cancelled: ['Mijoz bekor qildi', 'danger'], rejected: ['Rad etildi', 'danger'], no_show: ['Mijoz olmadi', 'danger'], awaiting_payment: ["To'lov kutilmoqda", ''] };
-const PLACE_TYPES = [['restoran', 'Restoran'], ['fastfood', 'Fastfud'], ['kafe', 'Kafe'], ['choyxona', 'Choyxona'], ['shirinlik', 'Shirinliklar']];
+const PLACE_TYPES = [['restoran', 'Restoran'], ['milliy', 'Milliy taomlar'], ['fastfood', 'Fastfud'], ['pizza', 'Pitsa'], ['sushi', 'Sushi'], ['kafe', 'Kafe'], ['choyxona', 'Choyxona'], ['shirinlik', 'Shirinliklar'], ['nonvoyxona', 'Non va pishiriq'], ['dokon', "Do'konlar"]];
 const dlvOn = () => S.boot?.business?.delivery && S.boot.business.delivery.status !== 'disabled' && CASHR.includes(S.user?.role);
 
 // Ovozli signal — yangi buyurtma javobsiz qolmasin (planshet ovozi yoqilgan bo'lishi kerak)
