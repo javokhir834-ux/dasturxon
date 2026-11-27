@@ -1,5 +1,6 @@
 // 6-etap: lokal serverli restoran — buyurtma bulutda, restoranda qabul, holatlar bulutga, internet uzilishi.
 const { spawn } = require('child_process');
+const ready = require('./_ready.cjs');
 const fs = require('fs');
 const APP = require('path').join(__dirname, '..', 'src', 'server.ts'), L = 'http://127.0.0.1:8080', C = 'http://127.0.0.1:8090';
 let ok = 0, bad = 0;
@@ -10,7 +11,7 @@ async function api(base, t, method, path, body) {
   const j = await r.json().catch(() => ({})); return Array.isArray(j) ? Object.assign(j, { _s: r.status }) : { ...j, _s: r.status };
 }
 const procs = {};
-const start = (n, env) => { procs[n] = spawn('node', [APP], { env: { ...process.env, ...env }, stdio: 'ignore' }); return wait(1400); };
+const start = (n, env) => { procs[n] = spawn('node', [APP], { env: { ...process.env, ...env }, stdio: 'ignore' }); return ready(Number(env.PORT || 8080)); };
 const stop = async (n) => { procs[n]?.kill(); await wait(400); };
 const CLOUD = { MODE: 'cloud', PORT: '8090', DATA_DIR: '/tmp/dc', PLATFORM_PASSWORD: 'pp-123456', DISPATCH_MS: '300' };
 const until = async (fn, ms = 15000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { const v = await fn(); if (v) return v; await wait(300); } return null; };

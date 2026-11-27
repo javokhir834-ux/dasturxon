@@ -8,6 +8,7 @@ import { authUser } from './auth.ts';
 import { attachStream, issueTicket, useTicket } from './realtime.ts';
 import { productImage } from './images.ts';
 import { clientIp, type Ctx } from './context.ts';
+import * as monitor from './monitor.ts';
 
 const PUBLIC = path.join(ROOT, 'public');
 const MIME: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml',
@@ -36,7 +37,13 @@ export function buildServer(ctx: Ctx): FastifyInstance {
       .header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS').header('Access-Control-Max-Age', '86400');
     if (req.method === 'OPTIONS') return reply.code(204).send();
   });
-  app.get('/api/health', async () => ({ ok: true, app: 'dasturxon', mode: config.MODE, version: VERSION }));
+  // Ilovalar serverni tanlashda va tashqi monitoring (UptimeRobot, deploy/healthcheck.sh) shu manzilni tekshiradi; baza ishlamasa — 503
+  app.get('/api/health', async (_req, reply) => {
+    let dbOk = true;
+    try { ctx.db.prepare('SELECT 1').get(); } catch { dbOk = false; }
+    if (!dbOk) reply.code(503);
+    return { ok: dbOk, app: 'dasturxon', mode: config.MODE, version: VERSION, db: dbOk };
+  });
 
   // ---- Xavfsizlik sarlavhalari va IP bo'yicha limit
   const rate = new Map<string, { n: number; reset: number }>();
@@ -46,7 +53,7 @@ export function buildServer(ctx: Ctx): FastifyInstance {
       .header('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(self)')
       .header('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
     if (config.MODE === 'cloud') reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    if (req.url.startsWith('/api/sync/push')) return;
+    if (req.url.startsWith('/api/sync/push') || req.url === '/api/health') return; // health — monitoring va ilovalar tez-tez tekshiradi
     const ip = clientIp(req.raw);
     const rl = rate.get(ip) || { n: 0, reset: Date.now() + 60000 };
     if (rl.reset < Date.now()) { rl.n = 0; rl.reset = Date.now() + 60000; }
@@ -96,6 +103,7 @@ export function buildServer(ctx: Ctx): FastifyInstance {
   const serveStatic = (pathname: string, reply: any) => {
     let file = path.normalize(path.join(PUBLIC, decodeURIComponent(pathname)));
     if (!file.startsWith(PUBLIC)) return reply.code(403).send();
+    if (!path.extname(file) && fs.existsSync(file + '.html')) file += '.html'; // /legal/privacy → privacy.html (Play uchun chiroyli havola)
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory())
       file = SPA.map((d) => (pathname === '/' + d || pathname.startsWith(`/${d}/`) ? path.join(PUBLIC, d, 'index.html') : null)).find(Boolean) || path.join(PUBLIC, 'index.html');
     reply.code(200).header('Cache-Control', 'no-cache').type(MIME[path.extname(file)] || 'application/octet-stream').send(fs.createReadStream(file));
@@ -113,6 +121,7 @@ export function buildServer(ctx: Ctx): FastifyInstance {
     if (e.code === 'FST_ERR_CTP_BODY_TOO_LARGE') return reply.code(413).send({ error: "Juda katta so'rov" });
     if (e.statusCode && e.statusCode < 500) return reply.code(e.statusCode).send({ error: e.message });
     console.error(e);
+    monitor.record(e, `${req.method} ${req.url.split('?')[0]}`);
     reply.code(500).send({ error: 'Serverda xatolik' });
   });
   return app;

@@ -12,6 +12,7 @@ import courier from './courier.ts';
 import platform from './platform.ts';
 import retail from './retail.ts';
 import deals from './deals.ts';
+import launch from './launch.ts';
 
 const MODULES: [string, (ctx: Ctx) => any][] = [
   ['pos', pos], // 1-etap: POS yadro (natijasi ctx ga yoyiladi: loadOrder, closeOrder, ...)
@@ -25,6 +26,7 @@ const MODULES: [string, (ctx: Ctx) => any][] = [
   ['platform', platform], // 8-etap: platforma admin
   ['retail', retail], // 9-etap: dorixona, do'kon, tez sotuv
   ['deals', deals], // 9-etap: kechki chegirma
+  ['launch', launch], // 10-etap: ishga chiqarish (huquqiy, akkauntni o'chirish, tizim holati)
 ];
 
 export function initModules(ctx: Ctx) {

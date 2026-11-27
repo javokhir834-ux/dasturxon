@@ -1,6 +1,7 @@
 // 8-etap testi: hisob-kitob akti, mijoz qarzi (no-show), nizolar (isbot, kompensatsiya, undirish, bosqichli choralar, e'tiroz),
 // qaytarishlar, qora ro'yxat, firibgarlik belgilari, statistika.
 const { spawn } = require('child_process');
+const ready = require('./_ready.cjs');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
 const APP = require('path').join(__dirname, '..', 'src', 'server.ts'), B = 'http://127.0.0.1:8080', DIR = '/tmp/plat8';
@@ -20,7 +21,7 @@ const near = (m) => ({ lat: REST.lat + m / 111000, lng: REST.lng });
 (async () => {
   fs.rmSync(DIR, { recursive: true, force: true });
   const proc = spawn('node', [APP], { env: { ...process.env, DATA_DIR: DIR, PORT: '8080', PLATFORM_PASSWORD: 'pp-123456', NOSHOW_WAIT_SEC: '1', DISPATCH_MS: '300' }, stdio: ['ignore', 'ignore', process.env.SHOW_ERR ? 'inherit' : 'ignore'] });
-  await wait(1400);
+  await ready();
   try {
     const plat = (await api(null, 'POST', '/api/platform/login', { password: 'pp-123456' })).token;
     await api(plat, 'POST', '/api/platform/businesses/1/subscription', { product: 'delivery', enabled: true, paid_until: ymd(30) });

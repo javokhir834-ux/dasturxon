@@ -1,5 +1,6 @@
 // 7-etap testi: kuryer ro'yxati, taqsimlash, olish (plomba), kod bilan topshirish, naqd hisobi, no-show, reyting.
 const { spawn } = require('child_process');
+const ready = require('./_ready.cjs');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
 const APP = require('path').join(__dirname, '..', 'src', 'server.ts'), B = 'http://127.0.0.1:8080', DIR = '/tmp/kur';
@@ -19,7 +20,7 @@ const near = (m) => ({ lat: REST.lat + m / 111000, lng: REST.lng }); // shimolga
 (async () => {
   fs.rmSync(DIR, { recursive: true, force: true });
   const proc = spawn('node', [APP], { env: { ...process.env, DATA_DIR: DIR, PLATFORM_PASSWORD: 'pp-123456', NOSHOW_WAIT_SEC: '2', DISPATCH_MS: '300' }, stdio: ['ignore', 'ignore', process.env.SHOW_ERR ? 'inherit' : 'ignore'] });
-  await wait(1400);
+  await ready();
   try {
     const plat = (await api(null, 'POST', '/api/platform/login', { password: 'pp-123456' })).token;
     await api(plat, 'POST', '/api/platform/settings', { offer_seconds: 5 });

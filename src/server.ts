@@ -3,6 +3,15 @@ import os from 'node:os';
 import config from './core/config.ts';
 import { db } from './core/db.ts';
 import { buildApp } from './app.ts';
+import * as monitor from './core/monitor.ts';
+
+// Ushlanmagan xatolar: panelga yoziladi va Telegramga ogohlantirish ketadi; istisnodan keyin jarayon to'xtaydi (systemd qayta ishga tushiradi)
+process.on('unhandledRejection', (e) => { console.error('unhandledRejection:', e); monitor.record(e, 'unhandledRejection'); });
+process.on('uncaughtException', (e) => {
+  console.error('uncaughtException:', e);
+  void monitor.alert(`🛑 FastHub server to'xtadi\n${e.message}`).finally(() => process.exit(1));
+  setTimeout(() => process.exit(1), 3000).unref();
+});
 
 const { app } = buildApp();
 await app.listen({ port: config.PORT, host: config.HOST });

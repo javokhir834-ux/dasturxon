@@ -83,6 +83,8 @@ function render() {
   if (me.status === 'pending') return (a.innerHTML = head('Kuryer', logoutBtn()) + `<div class="empty"><div class="ic">⏳</div><h2>Arizangiz tekshirilmoqda</h2>
     <p>Hujjatlaringizni platforma xodimi ko'rib chiqadi (odatda 1 ish kuni). Tasdiqlangach shu yerda ishni boshlaysiz.</p>
     <p class="muted small">Depozit topshirsangiz, naqd to'lovli buyurtmalar ham keladi.</p></div>`);
+  if (me.status === 'deleting') return (a.innerHTML = head('Kuryer', logoutBtn()) + `<div class="empty"><div class="ic">🗑</div><h2>O'chirish so'ralgan</h2>
+    <p>Hisob-kitob (naqd, daromad, depozit) yakunlangach akkauntingiz o'chiriladi. Platforma siz bilan bog'lanadi.</p></div>`);
   if (me.status === 'blocked') return (a.innerHTML = head('Kuryer', logoutBtn()) + `<div class="empty"><div class="ic">⛔</div><h2>Hisobingiz bloklangan</h2><p>${esc(me.status_reason)}</p>
     <div class="panel" style="text-align:left"><h3>E'tiroz bildirish</h3><textarea id="bapp" rows="3" maxlength="1000" placeholder="Nega blokdan chiqarish kerakligini yozing"></textarea>
     <button class="btn primary block" style="margin-top:8px" data-a="blockAppeal">Yuborish</button></div></div>`);
@@ -99,8 +101,17 @@ function viewLogin(a) {
     <input id="ph" type="tel" inputmode="tel" placeholder="+998 90 123 45 67" value="${esc(store.get('dx_kphone') || '')}">
     <button class="btn primary block big" style="margin-top:12px" data-a="otp">Kod olish</button>
     <div id="s2" hidden><label>SMS kod</label><input id="code" class="otp" inputmode="numeric" maxlength="5">
-    <button class="btn primary block big" style="margin-top:12px" data-a="login">Kirish</button><div id="dev" class="devcode"></div></div></div></div>`;
+    <button class="btn primary block big" style="margin-top:12px" data-a="login">Kirish</button><div id="dev" class="devcode"></div></div>
+    <p class="muted small" style="margin-top:12px">Kirish orqali ${legalLink('terms', 'foydalanish shartlari')} va ${legalLink('privacy', 'maxfiylik siyosati')}ga rozilik bildirasiz.</p></div></div>`;
 }
+// 10-etap: huquqiy sahifalar serverda (/legal/*) va akkauntni o'chirish
+const legalLink = (page, text) => `<a href="${esc(DX.asset('/legal/' + page))}" target="_blank" rel="noopener">${text}</a>`;
+const legalFooter = () => `<div class="muted small" style="text-align:center;margin-top:14px">${legalLink('privacy', 'Maxfiylik siyosati')} · ${legalLink('terms', 'Foydalanish shartlari')}
+  <details style="margin-top:12px;text-align:left" class="panel"><summary>Akkauntni o'chirish</summary>
+  <p class="muted small">Ism, telefon, hujjat rasmlari va joylashuv o'chiriladi. Hisobingizda naqd, daromad yoki depozit qolgan bo'lsa — so'rov qabul qilinadi va platforma hisob-kitobdan keyin o'chiradi. ${legalLink('delete', 'Batafsil')}</p>
+  <button class="btn sm block" data-a="delOtp">SMS kod olish</button>
+  <div id="ds2" hidden><label>SMS kod</label><input id="dcode" class="otp" inputmode="numeric" maxlength="5">
+  <button class="btn danger block" style="margin-top:8px" data-a="delConfirm">Akkauntni o'chirish</button><div id="ddev" class="devcode"></div></div></details></div>`;
 
 function viewRegister(a, me) {
   const step = !me.name || !me.vehicle ? 1 : !['passport', 'selfie', ...(['moto', 'avto'].includes(me.vehicle) ? ['license'] : [])].every((k) => me.docs.includes(k)) ? 2 : !me.test_passed ? 3 : 4;
@@ -227,7 +238,7 @@ async function viewHistory(a) {
     ${disputes}
     <div class="panel"><h3>Harakatlar</h3>${h.moves.map((m) => `<div class="line"><div class="grow"><div>${TN[m.type] || m.type}${m.order_id ? ` · #${m.order_id}` : ''}</div><div class="muted small">${dt(m.at)} ${esc(m.note)}</div></div><b class="num" style="color:${m.amount < 0 ? 'var(--warn)' : 'var(--accent)'}">${m.amount > 0 ? '+' : ''}${money(m.amount)}</b></div>`).join('') || '<div class="muted">—</div>'}</div>
     <div class="panel"><h3>Buyurtmalar</h3>${h.orders.map((o) => `<div class="line"><div class="grow"><div>#${o.id} · ${esc(o.place || '')}</div><div class="muted small">${dt(o.delivered_at || o.updated_at)} · ${o.status === 'delivered' ? 'yetkazildi' : 'mijoz olmadi'}${o.courier_rating ? ` · ⭐${o.courier_rating}` : ''}</div></div><b class="num">${money(o.courier_fee)}</b></div>`).join('') || '<div class="muted">—</div>'}</div>
-    <button class="btn block" data-a="logout">Chiqish</button></div>${tabs()}`;
+    <button class="btn block" data-a="logout">Chiqish</button>${legalFooter()}</div>${tabs()}`;
 }
 function viewRules(a) {
   a.innerHTML = head('Qoidalar') + `<div class="csec"><div class="panel small">
@@ -252,6 +263,19 @@ const A = {
   login: async () => {
     const r = await run(() => api('POST', '/api/k/login', { phone: $('#ph').value, code: $('#code').value }));
     if (!r) return; S.token = r.token; store.set('dx_ktoken', r.token); await refresh(); startPoll();
+  },
+  delOtp: async (el) => {
+    el.disabled = true;
+    const r = await run(() => api('POST', '/api/k/otp', { phone: S.st.me.phone }));
+    setTimeout(() => { el.disabled = false; }, 60000);
+    if (!r) { el.disabled = false; return; }
+    $('#ds2').hidden = false; if (r.dev_code) $('#ddev').textContent = `Sinov rejimi: kod — ${r.dev_code}`; $('#dcode').focus();
+  },
+  delConfirm: async () => {
+    if (!confirm("Akkaunt o'chiriladi. Davom etamizmi?")) return;
+    const r = await run(() => api('POST', '/api/account/delete', { kind: 'courier', phone: S.st.me.phone, code: $('#dcode').value }));
+    if (!r) return;
+    toast(r.message); S.token = null; S.st = null; store.set('dx_ktoken', null); stopGeo(); render();
   },
   logout: async () => { await api('POST', '/api/k/logout').catch(() => {}); S.token = null; S.st = null; store.set('dx_ktoken', null); stopGeo(); render(); },
   tab: (el) => { S.tab = el.dataset.v; render(); },

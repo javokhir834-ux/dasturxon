@@ -11,5 +11,12 @@ rsync -a --delete --exclude data --exclude .env --exclude node_modules --exclude
 (cd "$APP" && npm ci --omit=dev --no-audit --no-fund)
 chown -R dasturxon:dasturxon "$APP"
 cp "$APP/deploy/dasturxon.service" /etc/systemd/system/dasturxon.service
+# 10-etap: zaxirani tashqariga yuborish va holat tekshiruvi (eski o'rnatishlarda ham)
+command -v rclone >/dev/null || apt-get install -y rclone >/dev/null
+chmod +x "$APP/deploy/backup-offsite.sh" "$APP/deploy/healthcheck.sh"
+cat > /etc/cron.d/dasturxon-backup <<'CRON'
+40 3 * * * root /opt/dasturxon/deploy/backup-offsite.sh >/var/log/fasthub-backup.log 2>&1
+*/2 * * * * root /opt/dasturxon/deploy/healthcheck.sh >/dev/null 2>&1
+CRON
 systemctl daemon-reload && systemctl restart dasturxon
 sleep 2 && systemctl is-active --quiet dasturxon && echo "Yangilandi ✓" || { echo "XATO: journalctl -u dasturxon -n 50"; exit 1; }

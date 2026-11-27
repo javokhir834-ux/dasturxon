@@ -3,9 +3,9 @@
 Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 
 ## Holat
-- **Tugagan:** 1–9 etaplar va 8.5 (qayta qurish: TypeScript + Fastify, 3 mobil ilova, push). 9-etap — dorixona, do'kon, tez sotuv, olib ketish, kechki chegirma (2026-11-25)
+- **Tugagan:** 1–10 etaplar va 8.5 (qayta qurish: TypeScript + Fastify, 3 mobil ilova, push). 10-etap — ishga chiqarish uchun kod tomoni (2026-11-27)
 - **Brend:** FastHub Uz (2026-11-25) — ilovalar FastHub Uz / FastHub Kuryer / FastHub Biznes, paket ID `uz.fasthub.*`. Ichki kod nomi `dasturxon`.
-- **Keyingi:** 10-etap — Ishga chiqarish (pastda reja). Texnik qarz — "8.5" bo'limida.
+- **Keyingi:** pilot (Navoiy) — `docs/LAUNCH.md` bo'yicha server, kalitlar va Play. Undan keyin 11-etap (pastda taklif). Texnik qarz — "8.5" bo'limida.
 
 ## Arxitektura (8.5 dan boshlab)
 - **Server:** Node.js 22.18+ TypeScript'ni o'zi ishga tushiradi (build yo'q): `npm start` = `node src/server.ts`. Tur tekshiruvi: `npm run check` (tsc).
@@ -311,9 +311,41 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 - `refund_amount` (qisman qaytarish) — platforma "Qaytarish" bo'limida qo'lda; Payme/Click qisman qaytarish API ulanganda avtomatik.
 - Tarozi bilan to'g'ridan ulanish (COM/USB) — hozir og'irlik qo'lda kiritiladi; chek printeri tez sotuvda — keyin.
 
-## 10-etap rejasi (keyingi) — Ishga chiqarish
-- Brend: nom, logo, paket ID (`mobile/brand.json`) → Google Play (3 ilova), ichki sinov (internal testing) → ochiq.
-- Play talablari: maxfiylik siyosati sahifasi, foydalanish shartlari (oferta), akkauntni o'chirish (mijoz/kuryer ilovasida), ma'lumotlar xavfsizligi formasi.
-- Firebase (push), haqiqiy SMS (Eskiz/Playmobile adapteri `src/services/sms.ts`), Payme/Click merchant (YaTT/MChJ), fiskal provayder.
-- VPS deploy (deploy/ skriptlar), domen + HTTPS, zaxira nusxa (har kuni, boshqa joyga), monitoring (health, xatolar), yuklama sinovi.
-- Pilot: 2–3 restoran + 1 do'kon Navoiyda, 5–10 kuryer; fikr-mulohaza bo'yicha tuzatishlar.
+## 10-etapda qilingan — ishga chiqarish (2026-11-27)
+- **Modul:** `src/modules/launch.ts` (+ `src/core/monitor.ts`). Qo'llanma: **`docs/LAUNCH.md`** (server, .env kalitlari, Play Console maydonlari, Data safety, fonda joylashuv deklaratsiyasi, pilot).
+- **Huquqiy sahifalar:** `/legal/privacy`, `/legal/terms` (oferta), `/legal/delete` (`public/legal/`, build'siz HTML). Rekvizitlar platforma panelidan
+  (`platform_settings.legal_*`, `GET /api/legal`, `GET|POST /api/platform/legal`) sahifalarga `legal.js` orqali qo'yiladi. Ilovalarda kirish ekranida rozilik matni,
+  mijoz "Buyurtmalarim" va kuryer "Hisob" pastida havolalar. `native.js`: `/legal/*` ham serverga yo'naltiriladi. `web.ts`: kengaytmasiz yo'l → `.html`.
+- **Akkauntni o'chirish** (Play/App Store talabi): `POST /api/account/delete {kind: customer|courier, phone, code}` — SMS kod bilan; ilova ichida (#delete, kuryer Hisob) va vebda.
+  Mijoz: faol buyurtma / ochiq nizo / kutilayotgan qaytarish bo'lsa 409; aks holda `app_users` anonim (`deleted-<id>`, blocked), buyurtmalarda ism/telefon/manzil/joylashuv o'chadi
+  (summalar qoladi), yetkazish rasmlari, seanslar, push tokenlar o'chadi. Jadval `account_deletions` (telefon — HMAC xesh, qarz, no-show): qayta ro'yxatdan o'tsa
+  qarz va no-show qaytadi (`dlv.ext.onNewUser`). Kuryer: faol buyurtma — 409; balans ≠ 0 yoki depozit — `pending` (holat `deleting`, seans yopiladi), platforma
+  hisob-kitobdan keyin `POST /api/platform/deletions/:id/done`; aks holda darhol: anonim, `courier_docs` (pasport, selfi) o'chadi. Ro'yxat: `GET /api/platform/deletions`.
+- **SMS:** `src/services/sms.ts` — `SMS_MODE=eskiz` (Eskiz.uz: login → Bearer token 25 kun keshda, 401 da qayta kirish; `ESKIZ_EMAIL/PASSWORD/FROM`, `ESKIZ_URL` — test).
+- **Play tekshiruvchisi:** `REVIEW_PHONE` + `REVIEW_CODE` — shu raqamga SMS ketmaydi, kod doimiy (mijoz va kuryer).
+- **Monitoring:** `/api/health` bazani tekshiradi (ishlamasa 503). 5xx va ushlanmagan xatolar `monitor.record` → oxirgi 50 tasi panelda, Telegram (`ALERT_TG_TOKEN/CHAT`, 5 daqiqada 1 ta).
+  `deploy/healthcheck.sh` (cron 2 daq): 2 marta javobsiz → `systemctl restart` + xabar; disk ≥ 90% ogohlantirish.
+- **Zaxira:** server o'zi kunlik `data/backups` (staff.ts). `deploy/backup-offsite.sh` (cron 03:40): gzip + AES-256 (`BACKUP_PASSPHRASE`) → `rclone` (`BACKUP_REMOTE`),
+  `BACKUP_KEEP_DAYS`; natija `data/backups/offsite.json` → panel. Shifrsiz nusxa tashqariga yuborilmaydi. `setup-ubuntu.sh`/`update.sh` cron va rclone ni o'rnatadi.
+- **Platforma paneli → 🚀 Ishga chiqarish** (`public/launch.js`, `GET /api/platform/system`): 11 bandli tayyorlik ro'yxati (bulut rejimi, parol, SMS, push, Payme, Click,
+  rekvizitlar, zaxira, tashqi zaxira, ogohlantirish, demo raqam), versiya/uptime/xotira/baza, zaxira yoshi, xatolar, rekvizitlar formasi, o'chirish so'rovlari.
+- **CI:** `android.yml` — versionCode = run raqami, versionName = package.json; secrets bo'lsa (`ANDROID_KEYSTORE_BASE64`, `..._PASSWORD`, `ANDROID_KEY_ALIAS`)
+  imzolangan AAB artefakti. Firebase/AAB shartlari job darajasidagi env ga ko'chirildi (step `if` o'z env ini ko'rmaydi — oldingi xato).
+- **Yuklama sinovi:** `node tests/load.cjs [manzil] [parallel] [soniya]` (npm test ga kirmaydi). Lokal: ~4700 so'rov/s, p95 7 ms.
+- `.gitattributes`: `*.sh` har doim LF (Windows'da commit qilinsa ham serverda ishlaydi).
+- Testlar: `tests/launch.cjs` (30). Jami API: 12 to'plam.
+
+### 10-etap qarorlari
+- O'chirilgan mijoz buyurtmalari o'chirilmaydi (buxgalteriya/soliq), faqat shaxsiy maydonlar tozalanadi. Qora ro'yxat (telefon bilan) saqlanadi — siyosatda yozilgan.
+- Qarzni yashirish uchun o'chirish ishlamaydi: telefon xeshi bo'yicha qarz qaytadi, lekin ochiq telefon saqlanmaydi.
+- Kuryer hisobida pul bo'lsa avtomatik o'chirmaymiz — pul harakati qo'lda (Kuryerlar → Pul) yopilgach platforma tasdiqlaydi.
+- Zaxira va server O'zbekistonda (shaxsga doir ma'lumotlarni lokalizatsiya talabi) — tashqi zaxira uchun ikkinchi mahalliy server (sftp).
+
+### 10-etap ochiq qolganlari (kod emas)
+- Yurist: maxfiylik siyosati, oferta matni, reestrda ro'yxatdan o'tish talabi. Rus tilidagi sahifalar (kerak bo'lsa).
+- Eskiz shartnomasi + shablon, Payme/Click haqiqiy merchant, fiskal provayder, Firebase, VPS + domen, Play hisobi ($25) va yuklash kaliti — `docs/LAUNCH.md`.
+- Fonda joylashuv deklaratsiyasi videosi (kuryer), do'kon sahifasi rasmlari (skrinshotlar, 512px ikonka, 1024×500 banner).
+
+## 11-etap (taklif) — pilotdan keyin
+- Pilot fikrlari bo'yicha tuzatishlar; restoran o'z muqova rasmini yuklashi; promokodlar va referal; mijoz manzillar daftari.
+- Postgres (yuk oshganda, "8.5 texnik qarz"), WebSocket, iOS chiqarish.

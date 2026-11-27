@@ -428,5 +428,5 @@ export default function courier(ctx: Ctx) {
   // Nizo/isbot uchun rasmlar (8-etapda nizolar paneli ishlatadi)
   route('GET', '/api/platform/orders/:id/photos', null, ({ req, p }) => { tenant.platAuth(req); return db.prepare('SELECT kind, data, lat, lng, at FROM delivery_photos WHERE order_id=? ORDER BY id').all(int(p.id, 'id')); });
 
-  return { dispatchTick, LEVELS };
+  return { dispatchTick, LEVELS, money, getC }; // money, getC — 10-etap: akkauntni o'chirishda hisob tekshiruvi
 };

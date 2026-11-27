@@ -13,7 +13,7 @@ APP=/opt/dasturxon
 DATA=/var/lib/dasturxon
 echo "==> Paketlar"
 apt-get update -y
-apt-get install -y curl ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https ufw rsync
+apt-get install -y curl ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https ufw rsync rclone openssl
 
 echo "==> Node.js 22"
 if ! command -v node >/dev/null || ! node -v | grep -qE '^v2[2-9]'; then
@@ -43,6 +43,18 @@ PORT=8080
 DATA_DIR=$DATA
 PLATFORM_PASSWORD=$PW
 RATE_LIMIT=900
+# 10-etap: ishga chiqarish (docs/LAUNCH.md) — to'ldirib, keyin: systemctl restart dasturxon
+# SMS_MODE=eskiz
+# ESKIZ_EMAIL=
+# ESKIZ_PASSWORD=
+# PUSH_MODE=fcm
+# FCM_SERVICE_ACCOUNT=/opt/dasturxon/firebase.json
+# ALERT_TG_TOKEN=
+# ALERT_TG_CHAT=
+# BACKUP_REMOTE=uzbackup:fasthub
+# BACKUP_PASSPHRASE=
+# REVIEW_PHONE=
+# REVIEW_CODE=
 ENV
   echo "$PW" > /root/dasturxon-platforma-parol.txt
   chmod 600 /root/dasturxon-platforma-parol.txt
@@ -65,9 +77,11 @@ echo "==> Faervol"
 ufw allow OpenSSH >/dev/null; ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/dev/null
 ufw --force enable >/dev/null
 
-echo "==> Kunlik zaxira nusxa (03:30, 30 kun saqlanadi)"
+echo "==> Zaxira nusxa (03:40, shifrlab tashqariga) va holat tekshiruvi (har 2 daqiqa)"
+chmod +x "$APP/deploy/backup-offsite.sh" "$APP/deploy/healthcheck.sh"
 cat > /etc/cron.d/dasturxon-backup <<'CRON'
-30 3 * * * root f=$(ls -t /var/lib/dasturxon/backups/db-*.sqlite 2>/dev/null | head -1); [ -n "$f" ] && cp "$f" /var/backups/dasturxon/$(date +\%F).sqlite; find /var/backups/dasturxon -name '*.sqlite' -mtime +30 -delete
+40 3 * * * root /opt/dasturxon/deploy/backup-offsite.sh >/var/log/fasthub-backup.log 2>&1
+*/2 * * * * root /opt/dasturxon/deploy/healthcheck.sh >/dev/null 2>&1
 CRON
 
 sleep 2

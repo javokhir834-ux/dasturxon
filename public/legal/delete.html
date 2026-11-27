@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Akkauntni o'chirish — FastHub Uz</title>
+<link rel="stylesheet" href="/legal/legal.css">
+</head>
+<body>
+<main>
+  <header><div class="brand">FastHub Uz</div><h1>Akkauntni o'chirish</h1>
+    <div class="muted">FastHub Uz (mijoz) va FastHub Kuryer ilovalari uchun</div></header>
+
+  <p>Akkauntingizni ilova ichida (Mijoz: <b>Buyurtmalarim → Akkauntni o'chirish</b>, Kuryer: <b>Hisob → Akkauntni o'chirish</b>) yoki shu sahifada o'chirishingiz mumkin.
+    Telefon raqamingizga SMS kod yuboriladi — kod bilan tasdiqlaysiz.</p>
+
+  <div class="box">
+    <b>Nima o'chiriladi:</b> ism, telefon raqam, manzillar va xaritadagi joylashuv, kirish seanslari, push xabar tokenlari, yetkazish rasmlari;
+    kuryerlarda — pasport, selfi, guvohnoma va transport rasmlari.<br><br>
+    <b>Nima saqlanadi:</b> buyurtmalar summasi va sanasi (ismsiz va telefonsiz) — buxgalteriya va soliq qonunchiligi talab qilgani uchun;
+    to'lanmagan qarz va olinmagan buyurtmalar soni — faqat telefon raqamning shifrlangan xeshi bilan (firibgarlikdan himoya). Qora ro'yxatdagi raqamlar
+    platforma xavfsizligi uchun saqlanadi.<br><br>
+    <b>Qachon darhol o'chmaydi:</b> faol buyurtma, ochiq shikoyat yoki kutilayotgan pul qaytarish bo'lsa — ular yakunlangach qayta urining.
+    Kuryer hisobida naqd, daromad yoki depozit qolgan bo'lsa — so'rov qabul qilinadi va hisob-kitobdan keyin (odatda 3 ish kunida) o'chiriladi.
+  </div>
+
+  <form id="delForm" autocomplete="off">
+    <label>Akkaunt turi</label>
+    <div class="kinds"><label><input type="radio" name="kind" value="customer" checked> Mijoz</label><label><input type="radio" name="kind" value="courier"> Kuryer</label></div>
+    <label for="phone">Telefon raqam</label><input id="phone" inputmode="tel" placeholder="90 123 45 67">
+    <button id="sendCode">SMS kod yuborish</button>
+    <div id="step2" hidden>
+      <label for="code">SMS kod</label><input id="code" inputmode="numeric" maxlength="8">
+      <label for="reason">Sabab (ixtiyoriy)</label><textarea id="reason" rows="2" maxlength="300"></textarea>
+      <button id="confirm" class="danger">Akkauntni o'chirish</button>
+    </div>
+    <div id="msg" class="msg" hidden></div>
+  </form>
+
+  <p class="muted">Savollar: <span data-l="phone"></span> · <a data-mail href="#"><span data-l="email"></span></a></p>
+  <nav class="links"><a href="/legal/privacy">Maxfiylik siyosati</a><a href="/legal/terms">Foydalanish shartlari</a></nav>
+</main>
+<script src="/legal/legal.js"></script>
+</body>
+</html>

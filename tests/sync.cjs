@@ -1,5 +1,6 @@
 // 5-etap testi: lokal (8080) ↔ bulut (8090) sinxronizatsiyasi, internet uzilishi, xavfsizlik.
 const { spawn } = require('child_process');
+const ready = require('./_ready.cjs');
 const fs = require('fs');
 const APP = require('path').join(__dirname, '..', 'src', 'server.ts');
 const L = 'http://127.0.0.1:8080', C = 'http://127.0.0.1:8090';
@@ -14,7 +15,7 @@ const procs = {};
 function start(name, env) {
   const p = spawn('node', [APP], { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
   p.stderr.on('data', (d) => { const s = String(d); if (/error|xato/i.test(s) && !/ExperimentalWarning|trace-warnings/.test(s)) console.log(`[${name}] ${s.trim()}`); });
-  procs[name] = p; return wait(1300);
+  procs[name] = p; return ready(Number(env.PORT || 8080));
 }
 const stop = async (name) => { procs[name]?.kill(); await wait(400); };
 const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();

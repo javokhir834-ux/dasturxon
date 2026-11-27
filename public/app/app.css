@@ -154,3 +154,6 @@ html { background: #f6f3ee; }
 .deal .ph { height: 90px; border-radius: 10px; background: var(--card2) center/cover no-repeat; position: relative; }
 .deal .off { position: absolute; top: 6px; left: 6px; background: var(--warn); color: #1d1300; font-weight: 800; font-size: 12px; padding: 2px 7px; border-radius: 999px; }
 .opts.two { grid-template-columns: 1fr 1fr; }
+/* 10-etap: huquqiy havolalar va akkauntni o'chirish */
+.legal { text-align: center; padding-bottom: 90px; }
+.legal a, .csec a { color: var(--accent); }

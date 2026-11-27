@@ -1,0 +1,24 @@
+/* Huquqiy sahifalar (/legal/*): o'qish uchun yorug', oddiy hujjat ko'rinishi. Ilovalar va Google Play shu sahifalarga havola beradi. */
+:root { --ink: #1d2420; --muted: #5d6b64; --line: #e2e8e4; --accent: #1f9d5c; --bg: #f7f9f8; --danger: #c43c3c; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 28px 20px 60px; background: #fff; min-height: 100vh; }
+header { border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 18px; }
+header .brand { font-weight: 800; color: var(--accent); letter-spacing: .2px; }
+h1 { font-size: 26px; line-height: 1.25; margin: 6px 0 4px; }
+h2 { font-size: 19px; margin: 28px 0 8px; }
+p, li { color: var(--ink); } ul { padding-left: 22px; }
+.muted { color: var(--muted); font-size: 14px; }
+.box { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 14px 0; }
+nav.links { display: flex; gap: 14px; flex-wrap: wrap; font-size: 14px; margin-top: 30px; padding-top: 14px; border-top: 1px solid var(--line); }
+a { color: var(--accent); }
+[data-l]:empty::before { content: "—"; color: var(--muted); }
+label { display: block; font-size: 14px; color: var(--muted); margin: 14px 0 6px; }
+input, textarea { width: 100%; font: inherit; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+.kinds { display: flex; gap: 10px; } .kinds label { display: flex; gap: 8px; align-items: center; margin: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); cursor: pointer; }
+.kinds input { width: auto; }
+button { font: inherit; font-weight: 600; min-height: 46px; padding: 0 18px; border-radius: 12px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; margin-top: 14px; }
+button.danger { background: var(--danger); border-color: var(--danger); }
+button[disabled] { opacity: .5; pointer-events: none; }
+.msg { margin-top: 14px; padding: 12px 14px; border-radius: 10px; }
+.msg.ok { background: #e8f6ee; color: #14663c; } .msg.err { background: #fbeaea; color: #8f2626; }

@@ -1,5 +1,6 @@
 // Push xabarlar testi: FCM HTTP v1 soxta server bilan (JWT imzo, token, xabar), mobil ilova uchun CORS va /api/health.
 const { spawn } = require('child_process');
+const ready = require('./_ready.cjs');
 const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -32,7 +33,7 @@ const until = async (fn, ms = 8000) => { const t0 = Date.now(); while (Date.now(
   const sa = { project_id: 'dx-test', client_email: 'push@dx-test.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }), token_uri: 'http://127.0.0.1:8097/token' };
   fs.rmSync(DIR, { recursive: true, force: true });
   const proc = spawn('node', [APP], { env: { ...process.env, DATA_DIR: DIR, PLATFORM_PASSWORD: 'pp-123456', DISPATCH_MS: '300', PUSH_MODE: 'fcm', FCM_SERVICE_ACCOUNT: JSON.stringify(sa), FCM_API_URL: 'http://127.0.0.1:8097' }, stdio: 'ignore' });
-  await wait(1800);
+  await ready();
   try {
     const h = await api(null, 'GET', '/api/health');
     check(h.ok && h.app === 'dasturxon' && /^\d+\.\d+\.\d+$/.test(h.version), '/api/health ishlaydi (ilova serverni tekshiradi)');

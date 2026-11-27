@@ -1,5 +1,7 @@
 # Android ilovalar (mijoz, kuryer, biznes) — har push da APK yig'iladi.
 # Yuklab olish: GitHub → Actions → "Android ilovalar" → oxirgi ishga tushirish → pastda "Artifacts".
+# 10-etap: Google Play uchun imzolangan AAB — secrets bo'lsa (docs/LAUNCH.md): ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS.
+#   versionCode = ishga tushirish raqami (har yuklashda oshadi), versionName = package.json versiyasi.
 name: Android ilovalar
 on:
   push:
@@ -9,6 +11,9 @@ on:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    env: # step "if" faqat job darajasidagi env ni ko'radi
+      GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+      KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
     strategy:
       fail-fast: false
       matrix:
@@ -27,8 +32,13 @@ jobs:
         run: node build.mjs ${{ matrix.app }} && node sync.mjs ${{ matrix.app }} android
       - name: Firebase (bo'lsa)
         if: ${{ env.GOOGLE_SERVICES_JSON != '' }}
-        env: { GOOGLE_SERVICES_JSON: '${{ secrets.GOOGLE_SERVICES_JSON }}' }
         run: echo "$GOOGLE_SERVICES_JSON" > mobile/apps/${{ matrix.app }}/android/app/google-services.json
+      - name: Versiya
+        working-directory: mobile/apps/${{ matrix.app }}/android/app
+        run: |
+          V=$(node -p "require('../../../../../package.json').version")
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/; s/versionName \"[^\"]*\"/versionName \"$V\"/" build.gradle
+          grep -E "versionCode|versionName" build.gradle
       - name: APK (debug)
         working-directory: mobile/apps/${{ matrix.app }}/android
         run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon --stacktrace
@@ -36,4 +46,20 @@ jobs:
         with:
           name: ${{ matrix.app }}-apk
           path: mobile/apps/${{ matrix.app }}/android/app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+      - name: AAB (Google Play, imzolangan)
+        if: ${{ env.KS != '' }}
+        env: { KS_PASS: '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}', KS_ALIAS: '${{ secrets.ANDROID_KEY_ALIAS }}' }
+        working-directory: mobile/apps/${{ matrix.app }}/android
+        run: |
+          ./gradlew bundleRelease --no-daemon
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          jarsigner -keystore "$RUNNER_TEMP/upload.jks" -storepass "$KS_PASS" -sigalg SHA256withRSA -digestalg SHA-256 "$AAB" "$KS_ALIAS"
+          rm -f "$RUNNER_TEMP/upload.jks"
+      - uses: actions/upload-artifact@v4
+        if: ${{ env.KS != '' }}
+        with:
+          name: ${{ matrix.app }}-aab
+          path: mobile/apps/${{ matrix.app }}/android/app/build/outputs/bundle/release/*.aab
           retention-days: 30

@@ -1,5 +1,6 @@
 // 6-etap testi: mijoz ilovasi API, to'lov qoidalari, POS oqimi; Payme va Click callbacklari.
 const { spawn } = require('child_process');
+const ready = require('./_ready.cjs');
 const crypto = require('crypto');
 const fs = require('fs');
 const APP = require('path').join(__dirname, '..', 'src', 'server.ts'), B = 'http://127.0.0.1:8080';
@@ -11,7 +12,7 @@ async function api(t, method, path, body, headers = {}) {
   const j = await r.json().catch(() => ({})); return Array.isArray(j) ? Object.assign(j, { _s: r.status }) : { ...j, _s: r.status };
 }
 let proc;
-async function start(env) { proc?.kill(); await wait(400); fs.rmSync('/tmp/dlv', { recursive: true, force: true }); proc = spawn('node', [APP], { env: { ...process.env, DATA_DIR: '/tmp/dlv', PLATFORM_PASSWORD: 'pp-123456', ...env }, stdio: 'ignore' }); await wait(1400); }
+async function start(env) { proc?.kill(); await wait(400); fs.rmSync('/tmp/dlv', { recursive: true, force: true }); proc = spawn('node', [APP], { env: { ...process.env, DATA_DIR: '/tmp/dlv', PLATFORM_PASSWORD: 'pp-123456', ...env }, stdio: 'ignore' }); await ready(); }
 const ymd = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 async function setup(phoneSuffix) {

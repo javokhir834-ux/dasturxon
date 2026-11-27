@@ -1,0 +1,2 @@
+# Shell skriptlar Linux serverda ishlaydi — har doim LF
+*.sh text eol=lf

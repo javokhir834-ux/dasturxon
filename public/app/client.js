@@ -201,7 +201,25 @@ function viewLogin() {
     <button class="btn primary block" style="margin-top:12px" data-a="otp">Kod olish</button>
     <div id="step2" hidden><label>SMS kod</label><input id="code" class="otp" inputmode="numeric" maxlength="5" autocomplete="one-time-code">
       <label>Ismingiz</label><input id="nm" maxlength="60" placeholder="Masalan: Javohir">
-      <button class="btn primary block" style="margin-top:12px" data-a="login">Kirish</button><div id="dev" class="devcode"></div></div></div></div>`);
+      <button class="btn primary block" style="margin-top:12px" data-a="login">Kirish</button><div id="dev" class="devcode"></div></div>
+    <p class="muted small" style="margin-top:12px">Kirish orqali ${legalLink('terms', 'foydalanish shartlari')} va ${legalLink('privacy', 'maxfiylik siyosati')}ga rozilik bildirasiz.</p></div></div>`);
+}
+// 10-etap: huquqiy sahifalar serverda (/legal/*) — ilovada to'liq manzil bilan tashqi brauzerda ochiladi
+const legalLink = (page, text) => `<a href="${esc(DX.asset('/legal/' + page))}" target="_blank" rel="noopener">${text}</a>`;
+const legalFooter = () => `<div class="csec muted small legal">${legalLink('privacy', 'Maxfiylik siyosati')} · ${legalLink('terms', 'Foydalanish shartlari')}
+  <br><button class="btn sm ghost danger" style="margin-top:10px" data-a="go" data-v="#delete">Akkauntni o'chirish</button></div>`;
+
+async function viewDelete() {
+  if (S.token && !S.me) S.me = await api('GET', '/api/c/me').catch(() => null);
+  if (!S.token || !S.me) { S.after = '#delete'; return go('#login'); }
+  view(topbar("Akkauntni o'chirish", '#orders') + `<div class="csec"><div class="panel"><h3>Akkauntni o'chirish</h3>
+    <p class="muted small">Ismingiz, telefon raqamingiz, manzillaringiz va kirish ma'lumotlari o'chiriladi. Buyurtmalar summasi buxgalteriya uchun ismsiz saqlanadi.
+      Faol buyurtma, ochiq shikoyat yoki kutilayotgan pul qaytarish bo'lsa — ular yakunlangach o'chiring. Bu amalni qaytarib bo'lmaydi.</p>
+    <p>Raqam: <b>${fmtPhone(S.me.phone)}</b></p>
+    <button class="btn block" data-a="delOtp">SMS kod olish</button>
+    <div id="step2" hidden><label>SMS kod</label><input id="dcode" class="otp" inputmode="numeric" maxlength="5" autocomplete="one-time-code">
+      <button class="btn danger block" style="margin-top:12px" data-a="delConfirm">Akkauntni butunlay o'chirish</button><div id="dev" class="devcode"></div></div></div>
+    ${legalLink('delete', "Batafsil: nima o'chiriladi va nima saqlanadi")}</div>`);
 }
 
 async function viewPay(id) {
@@ -223,7 +241,7 @@ async function viewOrders() {
   view(topbar('Buyurtmalarim', '#', `<button class="btn sm" data-a="logout">Chiqish</button>`) + `<div class="csec muted small">${esc(me.name || '')} · ${fmtPhone(me.phone)} · yetkazilgan: ${me.completed}</div>
     ${(list || []).length ? list.map((o) => `<button class="ocard" data-a="go" data-v="#order/${o.id}"><div class="row"><b class="grow">${esc(o.place)}</b><span class="chip ${ST[o.status]?.[2] || ''}">${ST[o.status]?.[1] || ''} ${esc(ST[o.status]?.[0] || o.status)}</span></div>
       <div class="muted small" style="margin-top:6px">#${o.id} · ${dt(o.created_at)} · ${o.items.reduce((t, i) => t + i.qty, 0)} ta taom · <b>${som(o.total)}</b></div></button>`).join('')
-      : `<div class="empty"><div class="ic">🧾</div>Hali buyurtma yo'q<br><br><button class="btn primary" data-a="go" data-v="#">Buyurtma berish</button></div>`}`);
+      : `<div class="empty"><div class="ic">🧾</div>Hali buyurtma yo'q<br><br><button class="btn primary" data-a="go" data-v="#">Buyurtma berish</button></div>`}${legalFooter()}`);
 }
 
 async function viewOrder(id, silent) {
@@ -325,6 +343,7 @@ function route() {
   if (h === '#cart') return viewCart();
   if (h === '#login') return viewLogin();
   if (h === '#orders') return viewOrders();
+  if (h === '#delete') return viewDelete();
   if ((m = /^#pay\/(\d+)$/.exec(h))) return viewPay(m[1]);
   if ((m = /^#claim\/(\d+)$/.exec(h))) { if (!S.token) { S.after = h; return go('#login'); } return viewClaim(m[1]); }
   if ((m = /^#order\/(\d+)$/.exec(h))) {
@@ -411,6 +430,20 @@ const A = {
     $('#step2').hidden = false; el.textContent = 'Kodni qayta olish (1 daqiqadan keyin)';
     if (r.dev_code) $('#dev').textContent = `Sinov rejimi: SMS o'rniga kod — ${r.dev_code}`;
     $('#code').focus();
+  },
+  delOtp: async (el) => {
+    el.disabled = true;
+    const r = await run(() => api('POST', '/api/c/otp', { phone: S.me.phone }));
+    setTimeout(() => { el.disabled = false; }, 60000);
+    if (!r) { el.disabled = false; return; }
+    $('#step2').hidden = false; if (r.dev_code) $('#dev').textContent = `Sinov rejimi: SMS o'rniga kod — ${r.dev_code}`; $('#dcode').focus();
+  },
+  delConfirm: async () => {
+    if (!confirm("Akkaunt butunlay o'chiriladi. Davom etamizmi?")) return;
+    const r = await run(() => api('POST', '/api/account/delete', { kind: 'customer', phone: S.me.phone, code: $('#dcode').value }));
+    if (!r) return;
+    S.token = null; S.me = null; store.set('dx_ctoken', null); store.set('dx_phone', null);
+    toast(r.message); go('#');
   },
   login: async () => {
     const r = await run(() => api('POST', '/api/c/login', { phone: $('#ph').value, code: $('#code').value, name: $('#nm').value.trim() }));

@@ -49,7 +49,7 @@ export default function delivery(ctx: Ctx) {
   const settingsOf = (b) => ({ ...DEF, ...(db.prepare('SELECT * FROM delivery_settings WHERE business_id=?').get(b) || {}) });
   const isReplica = (b) => !!db.prepare("SELECT 1 FROM businesses WHERE id=? AND sync_key!='' AND sync_url!=''").get(b);
   // 7-etap kuryer moduli ulanadigan joylar
-  const ext : Record<string, any> = { courierOf: () => null, publicExtra: () => ({}), cols: [], denied: () => null, placeAllowed: (_b: number) => true }; // placeAllowed: 9-etap dorixona // denied: 8-etap qora ro'yxat
+  const ext : Record<string, any> = { courierOf: () => null, publicExtra: () => ({}), cols: [], denied: () => null, placeAllowed: (_b: number) => true, onNewUser: (_u) => {} }; // placeAllowed: 9-etap dorixona // denied: 8-etap qora ro'yxat // onNewUser: 10-etap
   const getRow = (id) => { const r = db.prepare('SELECT * FROM delivery_orders WHERE id=?').get(id); if (r) r.items = JSON.parse(r.items || '[]'); return r; };
   const PAYABLE = ['trial', 'active', 'grace'];
   const operating = (b) => {
@@ -61,7 +61,14 @@ export default function delivery(ctx: Ctx) {
 
   // ======================= MIJOZ (bulut) =======================
   // SMS kod: key — telefon (mijoz) yoki 'k'+telefon (kuryer)
+  // 10-etap: Google Play / App Store tekshiruvchisi uchun demo raqam — SMS ketmaydi, kod doimiy (REVIEW_PHONE=998..., REVIEW_CODE=5 raqam)
+  const REVIEW_PHONE = process.env.REVIEW_PHONE || '', REVIEW_CODE = process.env.REVIEW_CODE || '';
   async function otpSend(key, phone) {
+    if (REVIEW_PHONE && REVIEW_CODE && phone === REVIEW_PHONE) {
+      db.prepare("INSERT INTO otp_codes (phone,code_hash,expires,attempts,sent) VALUES (?,?,?,0,'[]') ON CONFLICT(phone) DO UPDATE SET code_hash=excluded.code_hash, expires=excluded.expires, attempts=0")
+        .run(key, tokHash(key + REVIEW_CODE), Date.now() + 30 * 60000);
+      return { ok: true };
+    }
     const row = db.prepare('SELECT * FROM otp_codes WHERE phone=?').get(key);
     const sent = JSON.parse(row?.sent || '[]').filter((t) => t > Date.now() - 36e5);
     if (sent.some((t) => t > Date.now() - 60000)) fail(429, "Kod yuborildi. 1 daqiqadan keyin qayta so'rang");
@@ -87,7 +94,11 @@ export default function delivery(ctx: Ctx) {
     notDenied('customer', phone);
     otpCheck(phone, body.code);
     let u = db.prepare('SELECT * FROM app_users WHERE phone=?').get(phone);
-    if (!u) { db.prepare('INSERT INTO app_users (phone,name,created_at) VALUES (?,?,?)').run(phone, str(body.name, 'Ism', { required: false, max: 60 }), now()); u = db.prepare('SELECT * FROM app_users WHERE phone=?').get(phone); }
+    if (!u) {
+      db.prepare('INSERT INTO app_users (phone,name,created_at) VALUES (?,?,?)').run(phone, str(body.name, 'Ism', { required: false, max: 60 }), now());
+      u = db.prepare('SELECT * FROM app_users WHERE phone=?').get(phone);
+      ext.onNewUser(u); // 10-etap: o'chirilgan akkauntning qarzi va no-show tarixi qaytadi
+    }
     else if (body.name && !u.name) db.prepare('UPDATE app_users SET name=? WHERE id=?').run(str(body.name, 'Ism', { max: 60 }), u.id);
     if (u.blocked) fail(403, 'Akkaunt bloklangan');
     const token = crypto.randomBytes(24).toString('hex');

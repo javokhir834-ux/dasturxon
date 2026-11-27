@@ -1,5 +1,6 @@
 // 9-etap testi: dorixona (litsenziya, retseptli dori), do'kon (kg, almashtirish), olib ketish, tez sotuv, kechki chegirma.
 const { spawn } = require('child_process');
+const ready = require('./_ready.cjs');
 const fs = require('fs');
 const path = require('path');
 const APP = path.join(__dirname, '..', 'src', 'server.ts'), B = 'http://127.0.0.1:8080', DIR = '/tmp/retailT';
@@ -16,7 +17,7 @@ const hm = (ms) => { const d = new Date(Date.now() + ms); return `${String(d.get
 (async () => {
   fs.rmSync(DIR, { recursive: true, force: true });
   const proc = spawn('node', [APP], { env: { ...process.env, DATA_DIR: DIR, PLATFORM_PASSWORD: 'pp-123456' }, stdio: ['ignore', 'ignore', process.env.SHOW_ERR ? 'inherit' : 'ignore'] });
-  await wait(1800);
+  await ready();
   try {
     const plat = (await api(null, 'POST', '/api/platform/login', { password: 'pp-123456' })).token;
     // ---------- Dorixona ----------

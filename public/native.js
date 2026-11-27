@@ -7,7 +7,7 @@
   var cfg = window.DX_CONFIG || {};
   var base = '';
   try { base = (localStorage.getItem('dx_server') || cfg.server || '').replace(/\/+$/, ''); } catch (e) { /* */ }
-  var remote = function (u) { return typeof u === 'string' && /^\/(api|img)\//.test(u); };
+  var remote = function (u) { return typeof u === 'string' && /^\/(api|img|legal)\//.test(u); };
   var DX = window.DX = {
     native: native,
     base: base,

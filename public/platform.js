@@ -28,7 +28,7 @@ const PLATFORM_UI = (() => {
   const bind = () => { $('#app').onclick = (e) => { const el = e.target.closest('[data-p]'); if (el && H[el.dataset.p]) { e.preventDefault(); H[el.dataset.p](el); } }; };
   const back = '<a class="btn sm" href="#" data-p="toPos">← POS ga</a>';
   // 8-etap: platforma bo'limlari (harakatlari platadmin.js da)
-  const NAV = [['platBiz', 'Bizneslar'], ['platCouriers', '🛵 Kuryerlar'], ['platStats', '📊 Statistika'], ['platSettle', '💰 Hisob-kitob'], ['platDisputes', '⚖️ Nizolar'], ['platRefunds', '↩️ Qaytarish'], ['platRisk', "🚫 Qora ro'yxat"], ['platPharm', '💊 Dorixonalar']];
+  const NAV = [['platBiz', 'Bizneslar'], ['platCouriers', '🛵 Kuryerlar'], ['platStats', '📊 Statistika'], ['platSettle', '💰 Hisob-kitob'], ['platDisputes', '⚖️ Nizolar'], ['platRefunds', '↩️ Qaytarish'], ['platRisk', "🚫 Qora ro'yxat"], ['platPharm', '💊 Dorixonalar'], ['platLaunch', '🚀 Ishga chiqarish']];
   const nav = (act) => `${back}<nav class="pnav">${NAV.map(([k, n]) => `<button class="btn sm ${k === act ? 'primary' : ''}" data-p="${k}">${n}</button>`).join('')}</nav>`;
   H.toPos = () => { document.body.classList.remove('scroll'); history.replaceState(null, '', location.pathname); boot(); };
 
