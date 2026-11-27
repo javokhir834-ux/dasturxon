@@ -1,7 +1,7 @@
 /* FastHub Kuryer — qorong'i dizayn (FastHub prototipi asosida). Mustaqil fayl. Ikonkalar: /lucide.js → ic(). */
 :root {
   --ios: cubic-bezier(.32, .72, 0, 1);
-  --acc: #D43F05; --acc-hi: #FF7A3D; --acc-soft: #3A2014;
+  --acc: #1D6BFF; --acc-hi: #4D8DFF; --acc-soft: #14254A;
   --bg: #16181D; --card: #23262D; --card2: #2C3038; --line: #33373F; --mut: #A1A1AA; --text: #fff;
   --ok: #22C55E; --ok-soft: #1F3326; --ok-hi: #86EFAC; --warn-soft: #3A2A14; --warn-hi: #FCD34D; --bad: #EF4444; --bad-soft: #3A1A1D; --bad-hi: #FCA5A5;
   --top: env(safe-area-inset-top, 0px); --bot: env(safe-area-inset-bottom, 0px);

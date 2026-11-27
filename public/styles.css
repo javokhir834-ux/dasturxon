@@ -1,8 +1,8 @@
-/* ===== Dizayn tokenlari — FastHub prototipi (yorug', iOS uslubi, to'q sariq aksent) ===== */
+/* ===== Dizayn tokenlari — FastHub prototipi (yorug', iOS uslubi, ko'k brend aksenti) ===== */
 :root {
   --bg: #F2F2F7; --bg2: #FFFFFF; --card: #FFFFFF; --card2: #F2F2F7; --line: #E5E5EA;
-  --text: #111114; --muted: #6B6B73; --accent: #D43F05; --accent-ink: #FFFFFF; --accent-soft: #FFF1EA; --accent-dark: #B13404;
-  --ok: #15803D; --ok-soft: #E8F7EE; --warn: #B45309; --warn-soft: #FEF6E0; --danger: #D70015; --danger-soft: #FDECEE; --info: #2F7BF6; --info-soft: #EAF1FE; --ready: #16A34A;
+  --text: #111114; --muted: #6B6B73; --accent: #1D6BFF; --accent-ink: #FFFFFF; --accent-soft: #E8F0FF; --accent-dark: #0B3FA8;
+  --ok: #15803D; --ok-soft: #E8F7EE; --warn: #B45309; --warn-soft: #FEF6E0; --danger: #D70015; --danger-soft: #FDECEE; --info: #0E7490; --info-soft: #E6F6F8; --ready: #16A34A;
   --shadow: 0 1px 3px rgba(0, 0, 0, .06); --shadow-lg: 0 12px 40px rgba(0, 0, 0, .14);
   --radius: 18px; --gap: 12px; --ios: cubic-bezier(.32, .72, 0, 1);
   --font: -apple-system, "SF Pro Text", Inter, system-ui, "Segoe UI", Roboto, sans-serif;
@@ -272,7 +272,7 @@ input, select, textarea { background: var(--card2); border: 1px solid transparen
 input:focus, select:focus, textarea:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 3px var(--accent-soft); }
 .btn { border-color: transparent; border-radius: 13px; font-weight: 700; transition: transform .22s var(--ios), background .2s; }
 .btn:active { transform: scale(.96); }
-.btn.primary { box-shadow: 0 4px 14px rgba(212, 63, 5, .22); }
+.btn.primary { box-shadow: 0 4px 14px rgba(29, 107, 255, .24); }
 .btn.danger { background: var(--danger-soft); border-color: transparent; }
 .btn.warn { background: var(--warn-soft); border-color: transparent; }
 .btn.ghost { background: transparent; border-color: var(--line); }

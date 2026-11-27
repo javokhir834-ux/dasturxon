@@ -172,7 +172,7 @@ function offerSheet(o) {
   return `<div class="backdrop"></div><div class="offer">
     <div class="row sb"><span class="col" style="gap:2px"><span class="mut sm" style="font-weight:600">Yangi buyurtma · #${o.id}</span><b class="fee">${som(o.fee)}</b></span>
       <svg width="56" height="56" viewBox="0 0 56 56" role="img" aria-label="Qolgan vaqt"><circle cx="28" cy="28" r="24" fill="none" stroke="#F2F2F7" stroke-width="5"/>
-        <circle id="oring" cx="28" cy="28" r="24" fill="none" stroke="#D43F05" stroke-width="5" stroke-linecap="round" stroke-dasharray="${RING}" transform="rotate(-90 28 28)" style="transition:stroke-dashoffset .9s linear"/>
+        <circle id="oring" cx="28" cy="28" r="24" fill="none" stroke="#1D6BFF" stroke-width="5" stroke-linecap="round" stroke-dasharray="${RING}" transform="rotate(-90 28 28)" style="transition:stroke-dashoffset .9s linear"/>
         <text id="otime" x="28" y="33" text-anchor="middle" font-size="14" font-weight="800" fill="#111"></text></svg></div>
     ${o.cash ? `<span class="pill warn" style="align-self:flex-start">${ic('banknote', 14)}Mijozdan naqd: ${som(o.cash)}</span>` : `<span class="pill ok" style="align-self:flex-start">${ic('shield-check', 14)}To'langan — mijoz kelmasa ham haq to'lanadi</span>`}
     <div class="route"><span class="rail"><i></i><s></s><u></u></span><span class="col grow" style="gap:12px">

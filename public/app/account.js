@@ -24,7 +24,7 @@ async function viewMe() {
         <span><b>${me.debt ? money(me.debt) : '0'}</b><span class="mut xs">Qarz, so'm</span></span></div></div>
     ${me.debt ? `<div class="note warn" style="margin:0 16px">${ic('info', 18)}<span>Oldingi olinmagan buyurtma uchun ${som(me.debt)} keyingi buyurtmaga qo'shiladi.</span></div>` : ''}
     <div class="card grid4" style="margin:0 16px">
-      ${[['#orders', 'Buyurtmalar', 'receipt-text', '#FFF1EA', '#C2410C'], ['#cart', 'Savat', 'shopping-cart', '#E8F7EE', '#15803D'], ['#', 'Joylar', 'store', '#E9EEFF', '#3346E8']]
+      ${[['#orders', 'Buyurtmalar', 'receipt-text', '#E8F0FF', '#1D6BFF'], ['#cart', 'Savat', 'shopping-cart', '#E8F7EE', '#15803D'], ['#', 'Joylar', 'store', '#E9EEFF', '#3346E8']]
         .map(([h, l, i, bg, fg]) => `<button class="press" data-a="go" data-v="${h}"><i style="background:${bg}">${ic(i, 24, { c: fg, w: 1.9 })}</i>${l}</button>`).join('')}
       ${legal.phone ? `<a class="press" href="tel:${esc(legal.phone.replace(/[^\d+]/g, ''))}"><i style="background:#EFEFF4">${ic('life-buoy', 24, { c: '#3A3A40', w: 1.9 })}</i>Yordam</a>` : ''}</div>
     ${partnerCards()}

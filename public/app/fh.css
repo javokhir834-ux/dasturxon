@@ -1,8 +1,8 @@
-/* FastHub Uz — mijoz ilovasi dizayni (FastHub prototipi asosida: iOS uslubi, to'q sariq aksent, oq kartalar).
+/* FastHub Uz — mijoz ilovasi dizayni (FastHub prototipi asosida: iOS uslubi, ko'k brend aksenti, oq kartalar).
    Mustaqil fayl: styles.css (POS) ga bog'liq emas. Ikonkalar: /lucide.js → ic(). */
 :root {
   --ios: cubic-bezier(.32, .72, 0, 1);
-  --acc: #D43F05; --acc-ink: #B13404; --acc-soft: #FFF1EA; --acc-hi: #FF7A3D;
+  --acc: #1D6BFF; --acc-ink: #0B3FA8; --acc-soft: #E8F0FF; --acc-hi: #4D8DFF;
   --ink: #111114; --ink2: #3A3A40; --mut: #6B6B73; --line: #E5E5EA; --bg: #F2F2F7; --card: #FFFFFF;
   --ok: #22C55E; --ok-ink: #126C33; --ok-soft: #E8F7EE; --warn: #B45309; --warn-soft: #FEF6E0; --bad: #D70015; --bad-soft: #FDECEE;
   --star: #F5A524; --blue: #2F7BF6;

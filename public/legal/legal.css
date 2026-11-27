@@ -1,5 +1,5 @@
 /* Huquqiy sahifalar (/legal/*): o'qish uchun yorug', oddiy hujjat ko'rinishi. Ilovalar va Google Play shu sahifalarga havola beradi. */
-:root { --ink: #1d2420; --muted: #5d6b64; --line: #e2e8e4; --accent: #1f9d5c; --bg: #f7f9f8; --danger: #c43c3c; }
+:root { --ink: #1d2420; --muted: #5d6b64; --line: #e2e8e4; --accent: #1D6BFF; --bg: #f7f9f8; --danger: #c43c3c; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 main { max-width: 760px; margin: 0 auto; padding: 28px 20px 60px; background: #fff; min-height: 100vh; }

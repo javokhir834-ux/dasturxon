@@ -371,6 +371,12 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
   tepada gorizontal panel. Yetkazish doskasi va oshxona ekrani — kulrang ustunli kanban (rangli nuqta, oq kartalar). PIN ekrani yorug'.
   Ekran kodi (app/office/staff/delivery/retail/platform) o'zgarmadi — faqat `app.js` sarlavhasi, `delivery.js` ustun sarlavhasi va platforma logotipi.
   Brauzer testlari: `header.top` → `aside.side`, `nav.tabs` → `nav.snav` (POS).
+- **Brend rangi — ko'k (2026-11-27, Javohir tanlovi: A varianti):** aksent `#1D6BFF` (to'q `#0B3FA8`, och fon `#E8F0FF`, qorong'i temada `#4D8DFF`) — `styles.css`, `app/fh.css`,
+  `courier/courier.css`, `legal/legal.css`. `--info` moviy-yashilga (`#0E7490`) o'tdi — aksentdan ajralib tursin. Toifa plitkalari ranglari (restoran, pitsa...) o'zgarmadi.
+- **Ochilish animatsiyasi:** `public/splash.js` — ko'k fon, oq kartada chaqmoq (sakrab chiqadi), tezlik chiziqlari, to'lqin halqasi, nom va "Tez. Qulay. Hammasi bir joyda.";
+  ~1.9 s, sessiyada bir marta, bosilsa o'tib ketadi, "kamroq harakat" sozlamasida qisqa. Uchala ilovada (`data-name` — ilova nomi).
+- **Mobil ilova rasmlari:** `mobile/brand-assets.py` — ikonkalar (oddiy, yumaloq, adaptiv old/fon qatlam), Android va iOS splash rasmlari ko'k brendda qayta chizildi
+  (195 ta fayl, eski yashil "F" logo o'rniga). `brand.json` `color` → `#1D6BFF`.
 - **Keyingi bosqich:** 4 — xarita (mijoz kuzatuvi, kuryer marshruti; O'zbekistondagi tile server va CSP).
 
 ## 11-etap (taklif) — pilotdan keyin

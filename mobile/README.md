@@ -23,7 +23,7 @@ cd apps/kuryer && npx cap open android # Android Studio (yoki: cd android && ./g
 
 ## Nom / logo o'zgartirish
 - `brand.json`: `name`, `idPrefix` (paket ID — Google Play'ga chiqishdan oldin tanlang, keyin o'zgarmaydi), `server` (standart server — bo'lsa so'ralmaydi).
-- Logo: `apps/<ilova>/assets/icon-only.png` (1024×1024), `icon-foreground.png`, `splash.png` → `cd apps/<ilova> && npx capacitor-assets generate`.
+- Logo va ochilish ekrani: `python mobile/brand-assets.py` — uchala ilovaning ikonkalari (Android mipmap, iOS AppIcon) va splash rasmlarini ko'k brendda qayta chizadi (Pillow kerak). Rang — skript boshidagi `BLUE`.
 - Paket ID o'zgarsa: `apps/<ilova>/android` va `ios` papkalarini o'chirib, `npx cap add android && npx cap add ios`, keyin `node sync.mjs`.
 
 ## Push xabarlar (Firebase, bepul)

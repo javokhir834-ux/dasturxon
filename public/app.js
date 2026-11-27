@@ -125,7 +125,7 @@ function renderCodeStep() {
   const app = $('#app');
   const draw = () => {
     app.innerHTML = `<div class="login"><div class="login-box">
-      <div class="brand" style="justify-content:center"><span class="dot"></span>FastHub Biznes</div>
+      <div class="sbrand"><span class="logo">${ic('zap', 20, { c: '#fff' })}</span><div style="text-align:left"><b>FastHub Biznes</b></div></div>
       <h1 style="margin-top:18px">Biznes kodi</h1><p class="muted small">Restoraningizning 6 xonali kodi (Boshqaruv → Sozlamalar yoki ega kabinetida)</p>
       <div class="pin-dots">${[0, 1, 2, 3, 4, 5].map((i) => `<i class="${i < code.length ? 'on' : ''}"></i>`).join('')}</div>
       <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-k="${n}">${n}</button>`).join('')}
