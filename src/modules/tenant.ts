@@ -6,7 +6,7 @@ import { DATA_DIR, hashPin } from '../core/db.ts';
 
 import type { Ctx } from '../core/context.ts';
 export default function tenant(ctx: Ctx) {
-  const { db, route, int, str, fail, now, clientIp } = ctx;
+  const { db, route, int, str, fail, now, clientIp, config } = ctx;
 
   // ---------- Sxema ----------
   const addCol = (t, c) => { try { db.exec(`ALTER TABLE ${t} ADD COLUMN ${c}`); } catch { /* bor */ } };
@@ -28,7 +28,8 @@ export default function tenant(ctx: Ctx) {
   const DEFAULTS = { price_pos: '300000', price_delivery: '200000', trial_days: '14', grace_days: '3', commission_percent: '12',
     courier_min_fee: '8000', offer_seconds: '30', dispatch_radius_km: '7', fund_percent: '1', probation_orders: '20', // 7-etap: kuryer sozlamalari
     dispute_days: '2', appeal_days: '3', dispute_fine: '20000', // 8-etap: shikoyat muddati, e'tiroz muddati, kuryer jarimasi
-    pharmacy_enabled: '0' }; // 9-etap: dorixonalar (yurist xulosasidan keyin 1)
+    pharmacy_enabled: '0', // 9-etap: dorixonalar (yurist xulosasidan keyin 1)
+    require_approval: config.MODE === 'cloud' ? '1' : '0' }; // yangi biznes arizasini platforma tasdiqlaydi (onboarding.ts)
   const setting = (k) => db.prepare('SELECT value FROM platform_settings WHERE key=?').get(k)?.value ?? DEFAULTS[k];
   const setSetting = (k, v) => db.prepare('INSERT INTO platform_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k, String(v));
 
@@ -157,7 +158,7 @@ export default function tenant(ctx: Ctx) {
   const regLimit = new Map();
   route('POST', '/api/register', null, ({ body, req }) => {
     const ip = clientIp(req); const n = (regLimit.get(ip) || []).filter((t) => t > Date.now() - 36e5);
-    if (n.length >= 5) fail(429, "Juda ko'p urinish. Keyinroq qayta urining");
+    if (n.length >= (Number(process.env.REGISTER_LIMIT) || 5)) fail(429, "Juda ko'p urinish. Keyinroq qayta urining"); // bitta IP dan soatiga
     regLimit.set(ip, [...n, Date.now()]);
     const name = str(body.business_name, 'Biznes nomi', { max: 80 });
     const ownerName = str(body.owner_name, 'Ega ismi', { max: 80 });
@@ -165,9 +166,11 @@ export default function tenant(ctx: Ctx) {
     const pass = passCheck(body.password);
     const pin = pinCheck(body.admin_pin);
     if (db.prepare('SELECT 1 FROM owners WHERE phone=?').get(phone)) fail(409, "Bu telefon bilan ro'yxatdan o'tilgan. Kabinetga kirib, filial qo'shing");
+    const onb = ctx.onboarding.checkBusiness(body); // so'rovnoma va maxfiylik testi — biznes yaratilishidan oldin
     const ownerId = db.prepare('INSERT INTO owners (name,phone,pass_hash,created_at) VALUES (?,?,?,?)').run(ownerName, phone, hashPass(pass), now()).lastInsertRowid;
     const biz = createBusiness({ ownerId, name, phone, adminName: ownerName, adminPin: pin, sample: !!body.sample });
-    return { code: biz.code, business_id: biz.id, trial_days: Number(setting('trial_days')) };
+    const approval = ctx.onboarding.saveBusiness(biz.id, onb, ip);
+    return { code: biz.code, business_id: biz.id, trial_days: Number(setting('trial_days')), approval };
   });
   route('GET', '/api/business-info', null, ({ url }) => {
     const code = url.searchParams.get('code');
@@ -210,7 +213,7 @@ export default function tenant(ctx: Ctx) {
     const ok = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
     const f = ok(from) ? new Date(`${from}T00:00:00`) : new Date(new Date().setHours(0, 0, 0, 0));
     const t = ok(to) ? new Date(`${to}T23:59:59.999`) : new Date(new Date().setHours(23, 59, 59, 999));
-    const branches = db.prepare('SELECT id, name, code, phone, address, mirror, last_sync_at FROM businesses WHERE owner_id=? ORDER BY id').all(o.id).map((b) => ({
+    const branches = db.prepare("SELECT id, name, code, phone, address, mirror, last_sync_at, COALESCE(approval,'approved') approval, COALESCE(approval_note,'') approval_note FROM businesses WHERE owner_id=? ORDER BY id").all(o.id).map((b) => ({
       ...b, ...bizSummary(b.id, f.toISOString(), t.toISOString()), pos: subStatus(b.id, 'pos'), delivery: subStatus(b.id, 'delivery'),
     }));
     return { owner: o, branches, prices: { pos: Number(setting('price_pos')), delivery: Number(setting('price_delivery')) } };
@@ -304,7 +307,7 @@ export default function tenant(ctx: Ctx) {
   route('GET', '/api/platform/settings', null, ({ req }) => { platAuth(req); return Object.fromEntries(Object.keys(DEFAULTS).map((k) => [k, Number(setting(k))])); });
   route('POST', '/api/platform/settings', null, ({ req, body }) => {
     platAuth(req);
-    for (const k of Object.keys(DEFAULTS)) if (body[k] != null) setSetting(k, int(body[k], k, { min: k === 'offer_seconds' ? 5 : 0, max: k.startsWith('price') || ['courier_min_fee', 'dispute_fine'].includes(k) ? 1e9 : ['commission_percent', 'dispatch_radius_km'].includes(k) ? 50 : k === 'fund_percent' ? 10 : k === 'offer_seconds' ? 300 : 365 }));
+    for (const k of Object.keys(DEFAULTS)) if (body[k] != null) setSetting(k, int(body[k], k, { min: k === 'offer_seconds' ? 5 : 0, max: k.startsWith('price') || ['courier_min_fee', 'dispute_fine'].includes(k) ? 1e9 : ['commission_percent', 'dispatch_radius_km'].includes(k) ? 50 : k === 'fund_percent' ? 10 : k === 'offer_seconds' ? 300 : ['pharmacy_enabled', 'require_approval'].includes(k) ? 1 : 365 }));
     if (body.new_password) setSetting('password_hash', hashPass(passCheck(body.new_password)));
     return { ok: true };
   });

@@ -1,4 +1,5 @@
 // 4-etap testi. Server PLATFORM_PASSWORD=platforma-test-1 bilan ishga tushirilgan bo'lishi kerak.
+const ONB = require('./_onboard.cjs');
 const BASE = 'http://localhost:8080';
 let ok = 0, bad = 0;
 const check = (c, m) => { c ? ok++ : bad++; console.log((c ? '  ✓ ' : '  ✗ ') + m); };
@@ -17,10 +18,10 @@ const daysFromNow = (n) => { const d = new Date(); d.setDate(d.getDate() + n); r
   const code1 = (await api(plat, 'GET', '/api/platform/businesses')).find((b) => b.id === 1).code;
 
   // Ro'yxatdan o'tish
-  const reg = await api(null, 'POST', '/api/register', { business_name: 'Kafe Bahor', owner_name: 'Sardor', phone: '90 100 00 01', password: 'parol123', admin_pin: '1234', sample: true });
+  const reg = await api(null, 'POST', '/api/register', { business_name: 'Kafe Bahor', owner_name: 'Sardor', phone: '90 100 00 01', password: 'parol123', admin_pin: '1234', ...ONB.BIZ, sample: true });
   check(reg.status === 200 && /^\d{6}$/.test(reg.code) && reg.trial_days === 14, `yangi biznes ro'yxatdan o'tdi, kod ${reg.code}`);
   const code2 = reg.code;
-  check((await api(null, 'POST', '/api/register', { business_name: 'X', owner_name: 'Y', phone: '901000001', password: 'parol123', admin_pin: '1234' })).status === 409, "bir telefon bilan qayta ro'yxat rad etildi");
+  check((await api(null, 'POST', '/api/register', { business_name: 'X', owner_name: 'Y', phone: '901000001', password: 'parol123', admin_pin: '1234', ...ONB.BIZ })).status === 409, "bir telefon bilan qayta ro'yxat rad etildi");
   check((await api(null, 'POST', '/api/login', { pin: '1111' })).status === 400, 'ikki biznes bor — kodsiz kirish rad etildi');
   check((await api(null, 'POST', '/api/login', { code: code2, pin: '1111' })).status === 401, "1-biznes PINi 2-biznesda ishlamaydi");
   check((await api(null, 'GET', `/api/business-info?code=${code2}`)).name === 'Kafe Bahor', 'kod bo\'yicha biznes nomi');

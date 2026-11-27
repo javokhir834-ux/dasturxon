@@ -1,5 +1,6 @@
 // 6-etap testi: mijoz ilovasi API, to'lov qoidalari, POS oqimi; Payme va Click callbacklari.
 const { spawn } = require('child_process');
+const ONB = require('./_onboard.cjs');
 const ready = require('./_ready.cjs');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -16,7 +17,7 @@ async function start(env) { proc?.kill(); await wait(400); fs.rmSync('/tmp/dlv',
 const ymd = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 async function setup(phoneSuffix) {
-  const reg = await api(null, 'POST', '/api/register', { business_name: 'Bahor', owner_name: 'Sardor', phone: '9010000' + phoneSuffix, password: 'parol123', admin_pin: '1234', sample: true });
+  const reg = await api(null, 'POST', '/api/register', { business_name: 'Bahor', owner_name: 'Sardor', phone: '9010000' + phoneSuffix, password: 'parol123', admin_pin: '1234', ...ONB.BIZ, sample: true });
   const plat = (await api(null, 'POST', '/api/platform/login', { password: 'pp-123456' })).token;
   await api(plat, 'POST', `/api/platform/businesses/${reg.business_id}/subscription`, { product: 'delivery', enabled: true, paid_until: ymd(30) });
   const adm = (await api(null, 'POST', '/api/login', { code: reg.code, pin: '1234' })).token;

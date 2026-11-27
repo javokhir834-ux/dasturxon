@@ -1,5 +1,6 @@
 // Push xabarlar testi: FCM HTTP v1 soxta server bilan (JWT imzo, token, xabar), mobil ilova uchun CORS va /api/health.
 const { spawn } = require('child_process');
+const ONB = require('./_onboard.cjs');
 const ready = require('./_ready.cjs');
 const http = require('http');
 const crypto = require('crypto');
@@ -80,7 +81,7 @@ const until = async (fn, ms = 8000) => { const t0 = Date.now(); while (Date.now(
     const img = 'data:image/jpeg;base64,' + Buffer.alloc(300, 1).toString('base64');
     await api(kt, 'POST', '/api/k/profile', { name: 'Bek', vehicle: 'velosiped' });
     for (const kind of ['passport', 'selfie']) await api(kt, 'POST', '/api/k/docs', { kind, data: img });
-    await api(kt, 'POST', '/api/k/test', { answers: [1, 1, 1, 0, 1, 1, 1, 0] }); await api(kt, 'POST', '/api/k/submit');
+    await api(kt, 'POST', '/api/k/test', { answers: [1, 1, 1, 0, 1, 1, 1, 0] }); await api(kt, 'POST', '/api/k/application', ONB.COURIER_APP); await api(kt, 'POST', '/api/k/consent', ONB.COURIER_CONSENT); await api(kt, 'POST', '/api/k/submit');
     const cid = (await api(plat, 'GET', '/api/platform/couriers'))[0].id;
     await api(plat, 'POST', `/api/platform/couriers/${cid}/status`, { action: 'approve' });
     await api(kt, 'POST', '/api/k/location', { lat: 40.101, lng: 65.37 }); await api(kt, 'POST', '/api/k/online', { online: true });

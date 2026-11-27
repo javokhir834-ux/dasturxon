@@ -1,5 +1,6 @@
 // 7-etap testi: kuryer ro'yxati, taqsimlash, olish (plomba), kod bilan topshirish, naqd hisobi, no-show, reyting.
 const { spawn } = require('child_process');
+const ONB = require('./_onboard.cjs');
 const ready = require('./_ready.cjs');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
@@ -54,6 +55,12 @@ const near = (m) => ({ lat: REST.lat + m / 111000, lng: REST.lng }); // shimolga
     db.prepare("UPDATE couriers SET test_at='2000-01-01' WHERE phone='998935550001'").run();
     check((await api(k1, 'POST', '/api/k/test', { answers: [1, 1, 1, 0, 1, 1, 1, 0] })).passed, "10 daqiqadan keyin testdan o'tdi");
     sub = await api(k1, 'POST', '/api/k/submit');
+    check(sub._s === 400 && /so'rovnoma/.test(sub.error), "so'rovnomasiz ariza yuborilmaydi");
+    await api(k1, 'POST', '/api/k/application', ONB.COURIER_APP);
+    sub = await api(k1, 'POST', '/api/k/submit');
+    check(sub._s === 400 && /maxfiylik/.test(sub.error), 'maxfiylik testisiz ariza yuborilmaydi');
+    await api(k1, 'POST', '/api/k/consent', ONB.COURIER_CONSENT);
+    sub = await api(k1, 'POST', '/api/k/submit');
     check(sub.status === 'pending', 'ariza yuborildi (tekshiruvda)');
     check((await api(k1, 'POST', '/api/k/profile', { name: 'X', vehicle: 'piyoda' }))._s === 409, "yuborilgan arizani o'zgartirib bo'lmaydi");
     check((await api(k1, 'POST', '/api/k/online', { online: true }))._s === 403, 'tasdiqlanmagan kuryer liniyaga chiqolmaydi');
@@ -61,7 +68,7 @@ const near = (m) => ({ lat: REST.lat + m / 111000, lng: REST.lng }); // shimolga
     const k2 = (await courierLogin('935550002')).token;
     await api(k2, 'POST', '/api/k/profile', { name: 'Vali', vehicle: 'velosiped' });
     await api(k2, 'POST', '/api/k/docs', { kind: 'passport', data: IMG }); await api(k2, 'POST', '/api/k/docs', { kind: 'selfie', data: IMG });
-    await api(k2, 'POST', '/api/k/test', { answers: [1, 1, 1, 0, 1, 1, 1, 0] }); await api(k2, 'POST', '/api/k/submit');
+    await api(k2, 'POST', '/api/k/test', { answers: [1, 1, 1, 0, 1, 1, 1, 0] }); await api(k2, 'POST', '/api/k/application', ONB.COURIER_APP); await api(k2, 'POST', '/api/k/consent', ONB.COURIER_CONSENT); await api(k2, 'POST', '/api/k/submit');
 
     // ---------- Platforma tasdiqlaydi ----------
     const list = await api(plat, 'GET', '/api/platform/couriers');

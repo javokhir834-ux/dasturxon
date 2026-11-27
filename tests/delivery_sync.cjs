@@ -1,5 +1,6 @@
 // 6-etap: lokal serverli restoran — buyurtma bulutda, restoranda qabul, holatlar bulutga, internet uzilishi.
 const { spawn } = require('child_process');
+const ONB = require('./_onboard.cjs');
 const ready = require('./_ready.cjs');
 const fs = require('fs');
 const APP = require('path').join(__dirname, '..', 'src', 'server.ts'), L = 'http://127.0.0.1:8080', C = 'http://127.0.0.1:8090';
@@ -21,8 +22,9 @@ const ymd = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `$
   for (const d of ['/tmp/dc', '/tmp/dl']) fs.rmSync(d, { recursive: true, force: true });
   await start('cloud', CLOUD);
   await start('local', { PORT: '8080', DATA_DIR: '/tmp/dl', SYNC_INTERVAL_MS: '400' });
-  const reg = await api(C, null, 'POST', '/api/register', { business_name: 'Namuna (bulut)', owner_name: 'Ega', phone: '901000009', password: 'parol123', admin_pin: '1234' });
+  const reg = await api(C, null, 'POST', '/api/register', { business_name: 'Namuna (bulut)', owner_name: 'Ega', phone: '901000009', password: 'parol123', admin_pin: '1234', ...ONB.BIZ });
   const plat = (await api(C, null, 'POST', '/api/platform/login', { password: 'pp-123456' })).token;
+  await api(C, plat, 'POST', `/api/platform/applications/${reg.business_id}`, { action: 'approve' });
   await api(C, plat, 'POST', `/api/platform/businesses/${reg.business_id}/subscription`, { product: 'delivery', enabled: true, paid_until: ymd(30) });
   const ow = (await api(C, null, 'POST', '/api/owner/login', { phone: '901000009', password: 'parol123' })).token;
   const key = (await api(C, ow, 'POST', `/api/owner/branches/${reg.business_id}/sync-key`)).key;
@@ -75,7 +77,7 @@ const ymd = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `$
   const kt = (await api(C, null, 'POST', '/api/k/login', { phone: '935550009', code: ko.dev_code })).token;
   await api(C, kt, 'POST', '/api/k/profile', { name: 'Bobur', vehicle: 'velosiped' });
   await api(C, kt, 'POST', '/api/k/docs', { kind: 'passport', data: IMG }); await api(C, kt, 'POST', '/api/k/docs', { kind: 'selfie', data: IMG });
-  await api(C, kt, 'POST', '/api/k/test', { answers: [1, 1, 1, 0, 1, 1, 1, 0] }); await api(C, kt, 'POST', '/api/k/submit');
+  await api(C, kt, 'POST', '/api/k/test', { answers: [1, 1, 1, 0, 1, 1, 1, 0] }); await api(C, kt, 'POST', '/api/k/application', ONB.COURIER_APP); await api(C, kt, 'POST', '/api/k/consent', ONB.COURIER_CONSENT); await api(C, kt, 'POST', '/api/k/submit');
   const plat2 = (await api(C, null, 'POST', '/api/platform/login', { password: 'pp-123456' })).token;
   const kid = (await api(C, plat2, 'GET', '/api/platform/couriers'))[0].id;
   await api(C, plat2, 'POST', `/api/platform/couriers/${kid}/status`, { action: 'approve' });

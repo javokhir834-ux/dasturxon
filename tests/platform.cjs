@@ -1,6 +1,7 @@
 // 8-etap testi: hisob-kitob akti, mijoz qarzi (no-show), nizolar (isbot, kompensatsiya, undirish, bosqichli choralar, e'tiroz),
 // qaytarishlar, qora ro'yxat, firibgarlik belgilari, statistika.
 const { spawn } = require('child_process');
+const ONB = require('./_onboard.cjs');
 const ready = require('./_ready.cjs');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
@@ -37,7 +38,7 @@ const near = (m) => ({ lat: REST.lat + m / 111000, lng: REST.lng });
     const k1 = (await api(null, 'POST', '/api/k/login', { phone: '935550001', code: kOtp.dev_code })).token;
     await api(k1, 'POST', '/api/k/profile', { name: 'Ali Valiyev', vehicle: 'velosiped' });
     await api(k1, 'POST', '/api/k/docs', { kind: 'passport', data: IMG }); await api(k1, 'POST', '/api/k/docs', { kind: 'selfie', data: IMG });
-    await api(k1, 'POST', '/api/k/test', { answers: [1, 1, 1, 0, 1, 1, 1, 0] }); await api(k1, 'POST', '/api/k/submit');
+    await api(k1, 'POST', '/api/k/test', { answers: [1, 1, 1, 0, 1, 1, 1, 0] }); await api(k1, 'POST', '/api/k/application', ONB.COURIER_APP); await api(k1, 'POST', '/api/k/consent', ONB.COURIER_CONSENT); await api(k1, 'POST', '/api/k/submit');
     const cid = (await api(plat, 'GET', '/api/platform/couriers'))[0].id;
     await api(plat, 'POST', `/api/platform/couriers/${cid}/status`, { action: 'approve' });
     await api(plat, 'POST', `/api/platform/couriers/${cid}/money`, { type: 'deposit', amount: 200000 });

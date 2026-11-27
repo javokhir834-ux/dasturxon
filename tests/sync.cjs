@@ -1,5 +1,6 @@
 // 5-etap testi: lokal (8080) ↔ bulut (8090) sinxronizatsiyasi, internet uzilishi, xavfsizlik.
 const { spawn } = require('child_process');
+const ONB = require('./_onboard.cjs');
 const ready = require('./_ready.cjs');
 const fs = require('fs');
 const APP = require('path').join(__dirname, '..', 'src', 'server.ts');
@@ -31,7 +32,8 @@ async function drained(tok, ms = 20000) {
   await start('local', { PORT: '8080', DATA_DIR: '/tmp/local', SYNC_INTERVAL_MS: '400' });
 
   // Bulutda biznes va ulash kaliti
-  const reg = await api(C, null, 'POST', '/api/register', { business_name: 'Bahor (bulut)', owner_name: 'Sardor', phone: '901000001', password: 'parol123', admin_pin: '1234' });
+  const reg = await api(C, null, 'POST', '/api/register', { business_name: 'Bahor (bulut)', owner_name: 'Sardor', phone: '901000001', password: 'parol123', admin_pin: '1234', ...ONB.BIZ });
+  { const pt = (await api(C, null, 'POST', '/api/platform/login', { password: 'p-123456' })).token; await api(C, pt, 'POST', `/api/platform/applications/${reg.business_id}`, { action: 'approve' }); }
   const ow = (await api(C, null, 'POST', '/api/owner/login', { phone: '901000001', password: 'parol123' })).token;
   const key = (await api(C, ow, 'POST', `/api/owner/branches/${reg.business_id}/sync-key`)).key;
   check(/^dxs_[0-9a-f]{40}$/.test(key), 'ega kabinetida ulash kaliti yaratildi');

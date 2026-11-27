@@ -16,7 +16,7 @@ const VEH = [['piyoda', 'Piyoda', 'user'], ['velosiped', 'Velosiped', 'bike'], [
 const DOCS = [['passport', 'Pasport (yuz tomoni)', 'id-card'], ['selfie', 'Pasport bilan selfi', 'scan-face'], ['license', 'Haydovchilik guvohnomasi', 'credit-card'], ['vehicle', 'Transport rasmi (ixtiyoriy)', 'bike']];
 const RING = 151; // taklif doirasi uzunligi (r=24)
 
-const S = { token: store.get('dx_ktoken'), st: null, tab: 'main', poll: null, geo: null, lastLoc: 0, test: null, answers: [], offerSeen: null };
+const S = { token: store.get('dx_ktoken'), st: null, tab: 'main', poll: null, geo: null, lastLoc: 0, test: null, answers: [], offerSeen: null, q: null, cq: null, cans: [] };
 
 function toast(msg, err) {
   const t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : '');
@@ -69,7 +69,11 @@ async function refresh() {
   const st = await api('GET', '/api/k/state').catch(() => null);
   if (!st) return;
   const newOffer = st.offer && st.offer.id !== S.offerSeen;
+  const prevStatus = S.st?.me?.status;
   S.st = st;
+  // Ro'yxat bosqichida ekran faqat harakatdan keyin (S.force) yoki holat o'zgarganda qayta chiziladi — yozilgan javoblar o'chmasin
+  if (['draft', 'rejected'].includes(st.me.status) && prevStatus === st.me.status && !S.force) return;
+  S.force = false;
   if (st.me.online || st.order) startGeo(); else stopGeo();
   if (newOffer) { S.offerSeen = st.offer.id; S.offerTotal = Math.max(5, (new Date(st.offer.expires) - Date.now()) / 1000); try { navigator.vibrate?.([300, 150, 300]); } catch {} }
   // kod/matn yozilayotganda va Daromad/Profil sahifasida ekranni buzmaymiz (faqat yangi taklif kelsa)
@@ -119,30 +123,49 @@ function viewLogin() {
         <button class="btn" style="margin-top:12px" data-a="login">Kirish</button><div id="dev" class="devcode"></div></div></div>
     <p class="mut sm" style="text-align:center;margin:14px 10px">Kirish orqali ${legalLink('terms', 'foydalanish shartlari')} va ${legalLink('privacy', 'maxfiylik siyosati')}ga rozilik bildirasiz.</p>`, false);
 }
+// Ro'yxat: 6 bosqich — ma'lumot, so'rovnoma, hujjatlar, qoidalar testi, maxfiylik va rozilik (onboarding.ts), ariza
+const DISTRICTS = ['Navoiy shahri', 'Karmana', 'Zarafshon', 'Uchquduq', 'Nurota', 'Qiziltepa', 'Xatirchi', 'Navbahor', 'Konimex', 'Tomdi', 'Boshqa'];
+const SLOTS = [['ertalab', 'Ertalab'], ['kunduzi', 'Kunduzi'], ['kechqurun', 'Kechqurun'], ['tunda', 'Tunda']];
 function viewRegister(me) {
   const need = ['passport', 'selfie', ...(['moto', 'avto'].includes(me.vehicle) ? ['license'] : [])];
-  const step = !me.name || !me.vehicle ? 1 : !need.every((k) => me.docs.includes(k)) ? 2 : !me.test_passed ? 3 : 4;
+  const step = !me.name || !me.vehicle ? 1 : !me.application_done ? 2 : !need.every((k) => me.docs.includes(k)) ? 3 : !me.test_passed ? 4 : !me.consent_done ? 5 : 6;
   const cur = S.regStep || step;
-  const bar = `<div class="steps" style="margin-bottom:16px">${["Ma'lumot", 'Hujjatlar', 'Test', 'Ariza'].map((l, i) => `<span class="${i + 1 <= cur ? 'on' : ''}"><i></i>${l}</span>`).join('')}</div>`;
+  const bar = `<div class="steps" style="margin-bottom:16px">${["Ma'lumot", "So'rovnoma", 'Hujjat', 'Test', 'Rozilik', 'Ariza'].map((l, i) => `<span class="${i + 1 <= cur ? 'on' : ''}"><i></i>${l}</span>`).join('')}</div>`;
+  const radioList = (a, cur2, opts) => `<div class="list">${opts.map(([k, n, i]) => `<button class="li press ${cur2 === k ? 'on' : ''}" data-a="${a}" data-v="${k}">${i ? `<span class="ib">${ic(i, 18)}</span>` : ''}<b class="grow" style="font-weight:600">${n}</b><span class="radio"></span></button>`).join('')}</div>`;
   let body = '';
   if (cur === 1) body = `<b style="font-size:20px">Ma'lumotlaringiz</b><span class="flabel">Ism-familiya (pasportdagidek)</span><input id="nm" class="inp" value="${esc(me.name)}">
-    <span class="flabel">Transport</span><div class="list">${VEH.map(([k, n, i]) => `<button class="li press ${(S.veh || me.vehicle) === k ? 'on' : ''}" data-a="veh" data-v="${k}"><span class="ib">${ic(i, 18)}</span><b class="grow" style="font-weight:600">${n}</b><span class="radio"></span></button>`).join('')}</div>
+    <span class="flabel">Transport</span>${radioList('veh', S.veh || me.vehicle, VEH)}
     <div id="vnb" ${['moto', 'avto'].includes(S.veh || me.vehicle) ? '' : 'hidden'}><span class="flabel">Davlat raqami</span><input id="vno" class="inp" value="${esc(me.vehicle_no)}" placeholder="01A123BC"></div>
     <button class="btn big" style="margin-top:16px" data-a="saveProfile">Davom etish</button>`;
-  if (cur === 2) body = `<b style="font-size:20px">Hujjatlar</b><p class="mut sm" style="margin:4px 0 6px">Rasmlar faqat platforma xodimiga ko'rinadi. Aniq va o'qiladigan bo'lsin.</p>
+  if (cur === 2) { const q = S.q || (S.q = { availability: [] }); body = `<b style="font-size:20px">So'rovnoma</b><p class="mut sm" style="margin:4px 0 0">Platforma sizga mos buyurtmalarni berishi uchun.</p>
+    <span class="flabel">Tug'ilgan yilingiz</span><input id="by" class="inp" type="number" inputmode="numeric" placeholder="1998" value="${esc(q.birth_year || '')}">
+    <span class="flabel">Qaysi hududda ishlaysiz?</span><select id="dist" class="inp">${['', ...DISTRICTS].map((d) => `<option value="${esc(d)}" ${q.district === d ? 'selected' : ''}>${d || '— tanlang —'}</option>`).join('')}</select>
+    <span class="flabel">Qaysi vaqtlarda ishlaysiz? (bir nechtasini tanlang)</span><div class="row" style="flex-wrap:wrap;gap:8px">${SLOTS.map(([k, n]) => `<button class="pill press ${q.availability.includes(k) ? 'acc' : ''}" style="height:38px;padding:0 14px;font-size:14px" data-a="slot" data-v="${k}">${n}</button>`).join('')}</div>
+    <span class="flabel">Kuryerlik tajribangiz bormi?</span>${radioList('exp', q.experience == null ? '' : q.experience ? 'yes' : 'no', [['yes', 'Ha, ishlaganman'], ['no', "Yo'q, birinchi marta"]])}
+    <label class="li" style="margin-top:6px"><input id="gps" type="checkbox" ${q.smartphone_gps ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--acc-hi)"><b class="grow" style="font-weight:600">GPS li smartfonim va internetim bor</b></label>
+    <div class="row" style="margin-top:12px"><button class="btn sec" style="width:auto" data-a="regStep" data-v="1">Orqaga</button><button class="btn" data-a="saveApp">Davom etish</button></div>`; }
+  if (cur === 3) body = `<b style="font-size:20px">Hujjatlar</b><p class="mut sm" style="margin:4px 0 6px">Rasmlar faqat platforma xodimiga ko'rinadi. Aniq va o'qiladigan bo'lsin.</p>
     <div class="list">${DOCS.filter(([k]) => k !== 'license' || ['moto', 'avto'].includes(me.vehicle)).map(([k, n, i]) => `<div class="li"><span class="ib">${ic(i, 18)}</span><span class="t"><b>${n}</b><span>${me.docs.includes(k) ? 'Yuklangan' : 'Kerak'}</span></span>
       <button class="btn sm ${me.docs.includes(k) ? 'sec' : ''}" data-a="doc" data-v="${k}">${me.docs.includes(k) ? 'Qayta' : 'Rasmga olish'}</button></div>`).join('')}</div>
     <p class="mut xs">MyID orqali shaxsni tasdiqlash platforma tomonidan qo'shiladi.</p>
-    <div class="row" style="margin-top:10px"><button class="btn sec" style="width:auto" data-a="regStep" data-v="1">Orqaga</button><button class="btn" data-a="regStep" data-v="3">Davom etish</button></div>`;
-  if (cur === 3) body = S.test ? `<b style="font-size:20px">Qoidalar testi</b><p class="mut sm" style="margin:4px 0 0">${S.test.length} savoldan kamida ${S.test.length - 1} tasiga to'g'ri javob bering.</p>
+    <div class="row" style="margin-top:10px"><button class="btn sec" style="width:auto" data-a="regStep" data-v="2">Orqaga</button><button class="btn" data-a="regStep" data-v="4">Davom etish</button></div>`;
+  if (cur === 4) body = S.test ? `<b style="font-size:20px">Qoidalar testi</b><p class="mut sm" style="margin:4px 0 0">${S.test.length} savoldan kamida ${S.test.length - 1} tasiga to'g'ri javob bering.</p>
     ${S.test.map((x, i) => `<div class="q"><b>${i + 1}. ${esc(x.q)}</b><div class="card2 list" style="padding:0 14px">${x.a.map((t, j) => `<button class="li press ${S.answers[i] === j ? 'on' : ''}" data-a="ans" data-q="${i}" data-v="${j}"><span class="grow" style="font-size:14px">${esc(t)}</span><span class="radio"></span></button>`).join('')}</div></div>`).join('')}
     <button class="btn big" style="margin-top:16px" data-a="sendTest">Javoblarni yuborish</button>` : '<p class="mut">Yuklanmoqda…</p>';
-  if (cur === 4) body = `<b style="font-size:20px">Arizani yuborish</b><div class="note ok" style="margin-top:10px">${ic('circle-check', 18)}<span>Ma'lumotlar, hujjatlar va test tayyor.</span></div>
+  if (cur === 5) body = S.cq ? `<b style="font-size:20px">Maxfiylik va shartlar</b>
+    <p class="mut sm" style="margin:4px 0 8px">Ishni boshlashdan oldin asosiy qoidalarni o'qing. To'liq matn: ${legalLink('privacy', 'maxfiylik siyosati')} va ${legalLink('terms', 'foydalanish shartlari')}.</p>
+    <div class="card2 col" style="gap:8px">${S.cq.points.map((t, i) => `<div class="row" style="align-items:flex-start;gap:10px"><span class="pill acc" style="height:24px;min-width:24px;justify-content:center;padding:0">${i + 1}</span><span class="sm" style="color:#D4D4D8">${esc(t)}</span></div>`).join('')}</div>
+    <b style="display:block;margin-top:16px">O'qiganingizni tekshiramiz</b>
+    ${S.cq.questions.map((x, i) => `<div class="q"><b>${i + 1}. ${esc(x.q)}</b><div class="card2 list" style="padding:0 14px">${x.a.map((t, j) => `<button class="li press ${S.cans[i] === j ? 'on' : ''}" data-a="cans" data-q="${i}" data-v="${j}"><span class="grow" style="font-size:14px">${esc(t)}</span><span class="radio"></span></button>`).join('')}</div></div>`).join('')}
+    <label class="li" style="margin-top:8px"><input id="agree" type="checkbox" style="width:20px;height:20px;accent-color:var(--acc-hi)"><b class="grow" style="font-weight:600">O'qidim va roziman</b></label>
+    <button class="btn big" style="margin-top:10px" data-a="sendConsent">Tasdiqlash</button>` : '<p class="mut">Yuklanmoqda…</p>';
+  if (cur === 6) body = `<b style="font-size:20px">Arizani yuborish</b><div class="note ok" style="margin-top:10px">${ic('circle-check', 18)}<span>Ma'lumotlar, so'rovnoma, hujjatlar, test va rozilik tayyor.</span></div>
     <p class="mut sm">Tasdiqlangach <b>sinov davri</b> boshlanadi. Reyting 4.5 dan past bo'lsa — ogohlantirish, 4.0 dan past — blok.</p>
     <button class="btn big" data-a="submit">Arizani yuborish</button>`;
   screen(`${title("Ro'yxat", logoutBtn())}${me.status === 'rejected' ? `<div class="note bad" style="margin-bottom:12px">${ic('info', 18)}<span>Ariza rad etildi: ${esc(me.status_reason)}. Tuzatib qayta yuboring.</span></div>` : ''}
     <div class="card">${bar}${body}</div>`, false);
-  if (cur === 3 && !S.test) api('GET', '/api/k/test').then((t) => { S.test = t; render(); }).catch((e) => toast(e.message, true));
+  if (cur === 4 && !S.test) api('GET', '/api/k/test').then((t) => { S.test = t; render(); }).catch((e) => toast(e.message, true));
+  if (cur === 5 && !S.cq) api('GET', '/api/onboarding/courier').then((q) => { S.cq = q; S.cans = []; render(); }).catch((e) => toast(e.message, true));
 }
 
 // ---------- Ish: liniya, taklif, faol buyurtma ----------
@@ -305,6 +328,8 @@ function viewProfile() {
 }
 
 // ---------- Harakatlar ----------
+// So'rovnoma maydonlarini qayta chizishdan oldin saqlab qo'yamiz
+const keepQ = () => { const q = S.q || (S.q = { availability: [] }); if ($('#by')) q.birth_year = $('#by').value; if ($('#dist')) q.district = $('#dist').value; if ($('#gps')) q.smartphone_gps = $('#gps').checked; };
 const radioOn = (el) => el.parentElement.querySelectorAll(`[data-a="${el.dataset.a}"]`).forEach((b) => b.classList.toggle('on', b === el));
 const A = {
   otp: async (el) => {
@@ -337,7 +362,7 @@ const A = {
   veh: (el) => { S.veh = el.dataset.v; radioOn(el); $('#vnb').hidden = !['moto', 'avto'].includes(S.veh); },
   saveProfile: async () => {
     const r = await run(() => api('POST', '/api/k/profile', { name: $('#nm').value, vehicle: S.veh || S.st.me.vehicle, vehicle_no: $('#vno')?.value }));
-    if (r) { S.st.me = r; S.regStep = 2; render(); }
+    if (r) { S.st.me = { ...S.st.me, ...r }; S.regStep = null; render(); }
   },
   regStep: (el) => { S.regStep = Number(el.dataset.v); render(); },
   doc: async (el) => {
@@ -350,10 +375,27 @@ const A = {
     if (S.answers.filter((x) => x != null).length < S.test.length) return toast('Hamma savolga javob bering', true);
     const r = await run(() => api('POST', '/api/k/test', { answers: S.answers }));
     if (!r) return;
-    if (r.passed) { toast(`Testdan o'tdingiz: ${r.score}/${r.total}`); S.regStep = 4; } else toast(`${r.score}/${r.total} — o'tmadi. Xato savollar: ${r.wrong.map((i) => i + 1).join(', ')}. 10 daqiqadan keyin qayta urining`, true);
-    S.answers = []; await refresh();
+    if (r.passed) { toast(`Testdan o'tdingiz: ${r.score}/${r.total}`); S.regStep = null; } else toast(`${r.score}/${r.total} — o'tmadi. Xato savollar: ${r.wrong.map((i) => i + 1).join(', ')}. 10 daqiqadan keyin qayta urining`, true);
+    S.answers = []; S.force = true; await refresh();
   },
-  submit: async () => { const r = await run(() => api('POST', '/api/k/submit')); if (r) { S.regStep = null; await refresh(); } },
+  // So'rovnoma va rozilik (onboarding.ts)
+  slot: (el) => { const q = S.q; keepQ(); const k = el.dataset.v; q.availability = q.availability.includes(k) ? q.availability.filter((x) => x !== k) : [...q.availability, k]; render(); },
+  exp: (el) => { keepQ(); S.q.experience = el.dataset.v === 'yes'; render(); },
+  saveApp: async () => {
+    keepQ(); const q = S.q;
+    const r = await run(() => api('POST', '/api/k/application', { birth_year: Number(q.birth_year) || 0, district: q.district, availability: q.availability, experience: !!q.experience, smartphone_gps: !!q.smartphone_gps }));
+    if (r) { S.regStep = null; S.force = true; toast("So'rovnoma saqlandi"); await refresh(); }
+  },
+  cans: (el) => { S.cans[Number(el.dataset.q)] = Number(el.dataset.v); radioOn(el); },
+  sendConsent: async () => {
+    if (S.cans.filter((x) => x != null).length < S.cq.questions.length) return toast('Hamma savolga javob bering', true);
+    if (!$('#agree').checked) return toast("«O'qidim va roziman» ni belgilang", true);
+    const r = await run(() => api('POST', '/api/k/consent', { answers: S.cans, agree: true }));
+    if (!r) return;
+    if (!r.passed) return toast(`Xato javob: ${r.wrong.map((i) => i + 1).join(', ')}-savol. Qoidalarni qayta o'qing`, true);
+    toast('Rahmat! Rozilik qayd etildi'); S.regStep = null; S.force = true; await refresh();
+  },
+  submit: async () => { const r = await run(() => api('POST', '/api/k/submit')); if (r) { S.regStep = null; S.force = true; await refresh(); } },
   online: async () => {
     const on = !S.st.me.online;
     if (on) startGeo();

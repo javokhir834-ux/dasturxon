@@ -1,5 +1,6 @@
 // 9-etap testi: dorixona (litsenziya, retseptli dori), do'kon (kg, almashtirish), olib ketish, tez sotuv, kechki chegirma.
 const { spawn } = require('child_process');
+const ONB = require('./_onboard.cjs');
 const ready = require('./_ready.cjs');
 const fs = require('fs');
 const path = require('path');
@@ -21,7 +22,7 @@ const hm = (ms) => { const d = new Date(Date.now() + ms); return `${String(d.get
   try {
     const plat = (await api(null, 'POST', '/api/platform/login', { password: 'pp-123456' })).token;
     // ---------- Dorixona ----------
-    const reg = await api(null, 'POST', '/api/register', { business_name: 'Shifo dorixona', owner_name: 'Ega', phone: '901112233', password: 'parol123', admin_pin: '5555' });
+    const reg = await api(null, 'POST', '/api/register', { business_name: 'Shifo dorixona', owner_name: 'Ega', phone: '901112233', password: 'parol123', admin_pin: '5555', ...ONB.BIZ });
     await api(plat, 'POST', `/api/platform/businesses/${reg.business_id}/subscription`, { product: 'delivery', enabled: true, paid_until: ymd(30) });
     const da = (await api(null, 'POST', '/api/login', { code: reg.code, pin: '5555' })).token;
     const dboot = await api(da, 'GET', '/api/bootstrap');

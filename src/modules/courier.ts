@@ -93,7 +93,7 @@ export default function courier(ctx: Ctx) {
     return { id: c.id, phone: c.phone, name: c.name, vehicle: c.vehicle, vehicle_no: c.vehicle_no, status: c.status, status_reason: c.status_reason, myid_verified: !!c.myid_verified,
       test_score: c.test_score, test_passed: c.test_score >= 7, docs, deposit: c.deposit, online: !!c.online, rating: Math.round(c.rating * 100) / 100, ratings: c.ratings, completed: c.completed,
       level: lv.name, level_bonus: lv.bonus, next_level: LEVELS[LEVELS.indexOf(lv) + 1] || null, cash_limit: cashLimit(c), rating_warn: c.ratings >= 5 && c.rating < RATING_WARN,
-      probation_left: c.status === 'probation' ? Math.max(0, S('probation_orders') - c.completed) : 0, lat: c.lat, lng: c.lng, ...m }; // lat/lng — kuryer xaritasi
+      probation_left: c.status === 'probation' ? Math.max(0, S('probation_orders') - c.completed) : 0, lat: c.lat, lng: c.lng, ...ctx.onboarding?.courierFlags(c.id), ...m }; // lat/lng — kuryer xaritasi; ariza va rozilik holati
   };
 
   // Mijoz va restoran uchun kuryer ma'lumoti
@@ -158,6 +158,7 @@ export default function courier(ctx: Ctx) {
     const need = ['passport', 'selfie', ...(['moto', 'avto'].includes(c.vehicle) ? ['license'] : [])].filter((k) => !docs.includes(k));
     if (need.length) fail(400, 'Hujjat yetishmaydi: ' + need.map((k) => DOCS[k]).join(', '));
     if (!(c.test_score >= 7)) fail(400, "Avval testdan o'ting");
+    const miss = ctx.onboarding.courierMissing(c.id); if (miss) fail(400, miss); // so'rovnoma va maxfiylik testi
     db.prepare("UPDATE couriers SET status='pending', status_reason='', submitted_at=? WHERE id=?").run(now(), c.id);
     return meView(getC(c.id));
   });
@@ -387,7 +388,7 @@ export default function courier(ctx: Ctx) {
   route('GET', '/api/platform/couriers/:id', null, ({ req, p }) => {
     tenant.platAuth(req);
     const c = getC(int(p.id, 'id')) || fail(404, 'Kuryer topilmadi');
-    return { ...meView(c), docs: db.prepare('SELECT kind, data, created_at FROM courier_docs WHERE courier_id=?').all(c.id),
+    return { ...meView(c), application: ctx.onboarding.appOf('courier', c.id), consent: ctx.onboarding.consentOf('courier', c.id), docs: db.prepare('SELECT kind, data, created_at FROM courier_docs WHERE courier_id=?').all(c.id),
       moves: db.prepare('SELECT * FROM courier_moves WHERE courier_id=? ORDER BY id DESC LIMIT 100').all(c.id), declines: c.declines, releases: c.releases, no_shows: c.no_shows };
   });
   route('POST', '/api/platform/couriers/:id/status', null, ({ req, p, body }) => {

@@ -390,6 +390,22 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
   masofa bo'yicha) + "Xaritada", joy kartalarida masofa, "Joylashuvni yoqing" kartasi (ruxsat bo'lsa jim aniqlanadi), "Siz uchun" ro'yxati.
 - Mijoz kuryer kartasi: yo'l-yo'lakay Yandex havolasi olib tashlandi (xarita ilovaning o'zida), reyting qatori bir qatorda.
 
+## Hamkorlikka qabul: so'rovnoma, maxfiylik testi, biznes arizasi (2026-11-27)
+- **Modul:** `src/modules/onboarding.ts`. Javohir qarorlari: biznes arizasini **platforma tasdiqlaydi**; maxfiylik/shartlar testi **kuryer va biznes** uchun; kirish joylari o'sha-o'sha
+  (biznes — `/#register`, kuryer — Kuryer ilovasidagi ro'yxat).
+- **Biznes** (`public/onboard.js`, `/#register`): 4 bosqich — biznes (nom, tur, YaTT/MChJ, yuridik nom, STIR 9/14 xona, manzil, ega, telefon), so'rovnoma (ish vaqti, xodimlar,
+  kunlik buyurtma, o'z kuryerlari, dorixona litsenziyasi, izoh), hisob (parol, admin PIN, namuna menyu), maxfiylik va shartlar (5 asosiy qoida + to'liq hujjatlarga havola,
+  5 savol, "o'qidim va roziman"). `POST /api/register` endi `application` va `consent` ni talab qiladi; hammasi to'g'ri bo'lmasa — qaysi savol xato ekani aytiladi.
+- **Tasdiq:** `businesses.approval` (`pending|approved|rejected`, eski bizneslar — approved). Tasdiqlanmagan biznes: PIN bilan kirish 403 ("tekshirilmoqda" / "rad etildi: sabab"),
+  mijoz ilovasida ko'rinmaydi. Platforma → **📝 Arizalar** (`GET /api/platform/applications`, `POST /api/platform/applications/:id {approve|reject, note}`): so'rovnoma, rozilik
+  (ball, versiya, vaqt, IP). Tasdiqda sinov muddati shu kundan, tur/manzil/litsenziya yetkazish sozlamasiga o'tadi. Ega kabinetida filial ariza holati.
+  Sozlama `require_approval` (platforma → Sozlamalar): bulut rejimida standart 1, lokalda 0.
+- **Kuryer** (`courier.js`): ro'yxat 6 bosqich — ma'lumot, **so'rovnoma** (tug'ilgan yil ≥18, hudud, ish vaqtlari, tajriba, GPS li smartfon; `POST /api/k/application`),
+  hujjatlar, qoidalar testi, **maxfiylik va rozilik** (5 qoida + 5 savol, `POST /api/k/consent`), ariza. `/api/k/submit` so'rovnoma va roziliksiz rad etadi.
+  Ro'yxat bosqichida 3 s poll ekranni qayta chizmaydi (yozilgan javoblar o'chmasin). Platforma kuryer oynasida so'rovnoma va rozilik.
+- Rozilik yozuvi: `consents (kind, ref_id, version, score, total, answers, ip, at)` — versiya = rekvizitlardagi "yangilangan" sana (hujjat o'zgarsa yangi versiya).
+- `REGISTER_LIMIT` (env, standart 5) — bitta IP dan soatiga ro'yxatdan o'tish. Testlar: `tests/onboarding.cjs` (31), `tests/_onboard.cjs` (to'g'ri javoblar). Jami 13 to'plam.
+
 ## 11-etap (taklif) — pilotdan keyin
 - Pilot fikrlari bo'yicha tuzatishlar; restoran o'z muqova rasmini yuklashi; promokodlar va referal; mijoz manzillar daftari.
 - Postgres (yuk oshganda, "8.5 texnik qarz"), WebSocket, iOS chiqarish.

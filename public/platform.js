@@ -28,34 +28,12 @@ const PLATFORM_UI = (() => {
   const bind = () => { $('#app').onclick = (e) => { const el = e.target.closest('[data-p]'); if (el && H[el.dataset.p]) { e.preventDefault(); H[el.dataset.p](el); } }; };
   const back = '<a class="btn sm" href="#" data-p="toPos">← POS ga</a>';
   // 8-etap: platforma bo'limlari (harakatlari platadmin.js da)
-  const NAV = [['platBiz', 'Bizneslar'], ['platCouriers', '🛵 Kuryerlar'], ['platStats', '📊 Statistika'], ['platSettle', '💰 Hisob-kitob'], ['platDisputes', '⚖️ Nizolar'], ['platRefunds', '↩️ Qaytarish'], ['platRisk', "🚫 Qora ro'yxat"], ['platPharm', '💊 Dorixonalar'], ['platLaunch', '🚀 Ishga chiqarish']];
+  const NAV = [['platBiz', 'Bizneslar'], ['platCouriers', '🛵 Kuryerlar'], ['platStats', '📊 Statistika'], ['platSettle', '💰 Hisob-kitob'], ['platDisputes', '⚖️ Nizolar'], ['platRefunds', '↩️ Qaytarish'], ['platRisk', "🚫 Qora ro'yxat"], ['platPharm', '💊 Dorixonalar'], ['platApps', '📝 Arizalar'], ['platLaunch', '🚀 Ishga chiqarish']];
   const nav = (act) => `${back}<nav class="pnav">${NAV.map(([k, n]) => `<button class="btn sm ${k === act ? 'primary' : ''}" data-p="${k}">${n}</button>`).join('')}</nav>`;
   H.toPos = () => { document.body.classList.remove('scroll'); history.replaceState(null, '', location.pathname); boot(); };
 
-  // ---------- Ro'yxatdan o'tish ----------
-  function register() {
-    shell("Yangi biznes", back, `<div class="page-narrow panel"><h2 style="margin-top:0">Restoraningizni ulang</h2>
-      <p class="muted small">14 kun bepul sinov. Karta kerak emas.</p>
-      <label>Restoran / kafe nomi</label><input id="r-name" placeholder="masalan: Bahor kafe">
-      <label>Ismingiz (ega)</label><input id="r-owner">
-      <label>Telefon raqam</label><input id="r-phone" inputmode="tel" placeholder="90 123 45 67">
-      <label>Kabinet paroli (kamida 6 belgi)</label><input id="r-pass" type="password">
-      <label>Admin PIN (planshetga kirish uchun, 4 raqam)</label><input id="r-pin" inputmode="numeric" maxlength="4">
-      <label style="display:flex;gap:10px;align-items:center;margin-top:12px;color:var(--text)"><input id="r-sample" type="checkbox" checked style="width:22px;height:22px"> Namuna menyu bilan boshlash</label>
-      <button class="btn primary block" style="margin-top:16px" data-p="doRegister">Ro'yxatdan o'tish</button>
-      <p class="muted small" style="text-align:center">Akkauntingiz bormi? <a href="#owner">Ega kabinetiga kiring</a></p></div>`);
-    bind();
-  }
-  H.doRegister = async () => {
-    try {
-      const r = await papi('', 'POST', '/api/register', { business_name: $('#r-name').value, owner_name: $('#r-owner').value, phone: $('#r-phone').value, password: $('#r-pass').value, admin_pin: $('#r-pin').value, sample: $('#r-sample').checked });
-      store.set('bizcode', r.code); store.set('bizname', $('#r-name').value.trim());
-      $('#pg').innerHTML = `<div class="page-narrow panel" style="text-align:center"><h2 style="margin-top:0">Tabriklaymiz! 🎉</h2><p>Biznesingiz kodi:</p><div class="bigcode">${esc(r.code)}</div>
-        <p class="muted small">Shu kodni yozib qo'ying: planshet va telefonlar shu kod bilan ulanadi. Sinov muddati: ${r.trial_days} kun.</p>
-        <p class="muted small">Ofitsiant, kassir va oshpazlarni POS → Boshqaruv → Xodimlar bo'limida qo'shasiz. Bir nechta filial — ega kabinetida.</p>
-        <button class="btn primary block" data-p="toPos">POS ni ochish (PIN bilan kirish)</button></div>`;
-    } catch (e) { toast(e.message, true); }
-  };
+  // ---------- Ro'yxatdan o'tish: so'rovnoma va maxfiylik testi bilan (onboard.js) ----------
+  function register() { ONBOARD.business(PLATFORM_UI); }
 
   // ---------- Ega kabineti ----------
   let oRange = 'today';
@@ -80,6 +58,7 @@ const PLATFORM_UI = (() => {
         <div class="stat"><div class="muted small">Hozir ochiq buyurtmalar</div><div class="v">${sum('open_orders')}</div></div>
         <div class="stat"><div class="muted small">Filiallar</div><div class="v">${d.branches.length}</div></div></div>
       <div class="card-grid">${d.branches.map((b) => `<div class="panel" style="margin:0">
+        ${b.approval !== 'approved' ? `<div class="note ${b.approval === 'rejected' ? 'danger' : 'warn'}" style="margin-bottom:10px">${b.approval === 'rejected' ? `Ariza rad etildi: ${esc(b.approval_note)}` : "Ariza platforma tomonidan tekshirilmoqda — tasdiqlangach panelga kirasiz"}</div>` : ''}
         <div class="row"><h3 style="margin:0">${esc(b.name)}</h3><div class="grow"></div>${b.shift_open ? `<span class="chip ok">Smena ochiq · ${hhmm(b.shift_open)}</span>` : '<span class="chip">Smena yopiq</span>'}</div>
         <div class="muted small" style="margin:4px 0 10px">${b.address ? esc(b.address) + ' · ' : ''}kod <b>${esc(b.code)}</b></div>
         <div class="row wrap" style="gap:18px"><div><div class="muted small">Tushum</div><b class="num">${som(b.revenue)}</b></div><div><div class="muted small">Buyurtma</div><b>${b.orders}</b></div>
@@ -220,6 +199,7 @@ const PLATFORM_UI = (() => {
       <div><label>Kuryer qidirish radiusi (km)</label><input name="dispatch_radius_km" type="number" value="${st.dispatch_radius_km ?? 7}"></div>
       <div><label>Sinov davri (buyurtma)</label><input name="probation_orders" type="number" value="${st.probation_orders ?? 20}"></div>
       <div><label class="chk"><input type="checkbox" name="pharmacy_enabled" ${String(st.pharmacy_enabled) === '1' ? 'checked' : ''}> Dorixonalar yoqilgan (yurist xulosasidan keyin)</label></div>
+      <div><label class="chk"><input type="checkbox" name="require_approval" ${String(st.require_approval) === '1' ? 'checked' : ''}> Yangi biznes arizasini platforma tasdiqlaydi</label></div>
       <div><label>Shikoyat muddati (kun)</label><input name="dispute_days" type="number" value="${st.dispute_days ?? 2}"></div>
       <div><label>E'tiroz muddati (kun)</label><input name="appeal_days" type="number" value="${st.appeal_days ?? 3}"></div>
       <div><label>Kuryer jarimasi (2-ayb, so'm)</label><input name="dispute_fine" type="number" value="${st.dispute_fine ?? 20000}"></div></div>
@@ -228,7 +208,7 @@ const PLATFORM_UI = (() => {
       <div class="foot"><button class="btn" data-m="close">Bekor</button><button class="btn primary" data-m="ok">Saqlash</button></div>`);
     if (!v) return;
     try { await papi('ptoken', 'POST', '/api/platform/settings', { price_pos: Number(v.price_pos), price_delivery: Number(v.price_delivery), trial_days: Number(v.trial_days), grace_days: Number(v.grace_days), commission_percent: Number(v.commission_percent),
-      ...Object.fromEntries(['fund_percent', 'courier_min_fee', 'offer_seconds', 'dispatch_radius_km', 'probation_orders', 'dispute_days', 'appeal_days', 'dispute_fine'].map((k) => [k, Number(v[k])])), pharmacy_enabled: v.pharmacy_enabled ? 1 : 0, ...(v.new_password ? { new_password: v.new_password } : {}) }); platform(); toast('Saqlandi'); }
+      ...Object.fromEntries(['fund_percent', 'courier_min_fee', 'offer_seconds', 'dispatch_radius_km', 'probation_orders', 'dispute_days', 'appeal_days', 'dispute_fine'].map((k) => [k, Number(v[k])])), pharmacy_enabled: v.pharmacy_enabled ? 1 : 0, require_approval: v.require_approval ? 1 : 0, ...(v.new_password ? { new_password: v.new_password } : {}) }); platform(); toast('Saqlandi'); }
     catch (e) { toast(e.message, true); }
   };
 
@@ -280,6 +260,8 @@ const PLATFORM_UI = (() => {
     const v = await modal(`<h2>${esc(c.name || 'Kuryer')} <span class="chip ${CST[c.status]?.[1] || ''}">${CST[c.status]?.[0]}</span></h2>
       <div class="muted small">${esc(fmtPhone(c.phone))} · ${VEHN[c.vehicle] || '—'} ${esc(c.vehicle_no || '')} · test ${c.test_score ?? '—'}/8 · ${esc(c.level)} · depozit ${money(c.deposit)} · naqd limit ${money(c.cash_limit)}</div>
       ${c.status_reason ? `<div class="note-line muted small">Sabab: ${esc(c.status_reason)}</div>` : ''}
+      ${c.application ? `<div class="note-line small">So'rovnoma: ${c.application.birth_year} yil tug'ilgan · ${esc(c.application.district)} · ${esc((c.application.availability || []).join(', '))} · tajriba: ${c.application.experience ? 'bor' : "yo'q"}</div>` : ''}
+      <div class="small" style="margin-top:6px">${c.consent ? `<span class="chip ok">✓ Maxfiylik testi ${c.consent.score}/${c.consent.total}</span> <span class="muted">versiya ${esc(c.consent.version)} · ${dt(c.consent.at)}</span>` : `<span class="chip warn">Rozilik yo'q</span>`}</div>
       <div class="docs">${c.docs.map((d) => `<figure><img src="${esc(d.data)}" alt=""><figcaption>${DOCN[d.kind] || d.kind}</figcaption></figure>`).join('') || '<span class="muted">Hujjat yo\'q</span>'}</div>
       <label class="chk"><input type="checkbox" name="myid" ${c.myid_verified ? 'checked' : ''}> MyID orqali shaxsi tasdiqlangan</label>
       <div class="muted small">Yetkazgan ${c.completed} · mijoz olmagan ${c.no_shows} · rad etgan ${c.declines} · voz kechgan ${c.releases} · qo'lidagi naqd <b>${money(c.hand)}</b> · hisob <b>${money(c.balance)}</b></div>
