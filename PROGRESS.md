@@ -346,6 +346,20 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 - Eskiz shartnomasi + shablon, Payme/Click haqiqiy merchant, fiskal provayder, Firebase, VPS + domen, Play hisobi ($25) va yuklash kaliti — `docs/LAUNCH.md`.
 - Fonda joylashuv deklaratsiyasi videosi (kuryer), do'kon sahifasi rasmlari (skrinshotlar, 512px ikonka, 1024×500 banner).
 
+## Dizayn: FastHub prototipi (2026-11-27, 1-bosqich — mijoz ilovasi)
+- Manba: Javohirning `FastHub-prototip` (Preact prototipi: mijoz, kuryer, biznes). Uslub: iOS, aksent `#D43F05`, fon `#F2F2F7`, oq kartalar (radius 20), Lucide ikonkalari.
+- **Mijoz ilovasi** to'liq qayta chizildi: `public/app/fh.css` (mustaqil, styles.css ga bog'liq emas), ekranlar `views.js` (asosiy, joy, savat),
+  `orders.js` (buyurtmalar, kuzatish, to'lov, shikoyat), `account.js` (profil, kirish, akkauntni o'chirish), `client.js` (holat, API, harakatlar).
+  Pastki tab bar: Asosiy / Buyurtmalar / Savat / Profil (`#me` — yangi). Joy sahifasi: katta foto, ma'lumot plitkalari, yopishqoq bo'lim tugmalari,
+  taom qatori + suzuvchi "+" / miqdor. Savat: guruhlangan kartalar, to'lov usuli radio, pastda "Jami + To'lash". Kuzatish: 4 bosqichli progress, kuryer kartasi.
+- `public/lucide.js` — 70 ta ikonka (prototipdan, ISC), `ic(name, size, {c, w, fill})`. Barcha ilovalar ishlatishi mumkin.
+- Eski `public/app/icons.js` o'chirildi. `public/app/app.css` hozircha faqat kuryer ilovasi uchun (2-bosqichda almashadi).
+- Server: `publicOrder` ga `place_type` (buyurtma sahifasida joy fotosi).
+- Brauzer testlari (`ui6/8/9.py`) yangi selektorlarga moslandi (`.prow`, `.mi`, `.bottombar .btn`, `.prog`).
+- Prototipdagi, lekin hali yo'q: xarita (Leaflet + OSRM — tashqi xizmat, CSP va O'zbekistondagi tile serverini hal qilish kerak), reyting (joy reytingi
+  bazada yo'q — uydirma raqam ko'rsatilmaydi), bonus/promokod/FastHub Plus (biznes qarori), til almashtirish (ru).
+- **Keyingi bosqichlar:** 2 — kuryer ilovasi (prototipdagi qorong'i tema), 3 — biznes paneli (yon menyu + kanban doska), 4 — xarita.
+
 ## 11-etap (taklif) — pilotdan keyin
 - Pilot fikrlari bo'yicha tuzatishlar; restoran o'z muqova rasmini yuklashi; promokodlar va referal; mijoz manzillar daftari.
 - Postgres (yuk oshganda, "8.5 texnik qarz"), WebSocket, iOS chiqarish.

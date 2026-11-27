@@ -43,15 +43,15 @@ async def main():
             # ---- Mijoz ilovasi
             mc = await b.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, is_mobile=True, has_touch=True); await mc.add_init_script(FAKE)
             m = await mc.new_page(); watch(m, "mijoz"); m.on("dialog", lambda d: asyncio.ensure_future(d.accept()))
-            await connect(m, 8095); await m.wait_for_selector(".place"); await m.screenshot(path=f"{OUT}/10-mijoz-places.png")
+            await connect(m, 8095); await m.wait_for_selector(".prow"); await m.screenshot(path=f"{OUT}/10-mijoz-places.png")
             assert await m.is_visible(".dx-srv"), "server tugmasi ko'rinmadi"
-            await m.click(".place"); await m.wait_for_selector(".pcard")
-            await m.click('.pcard >> nth=0 >> [data-a="qty"]'); await m.click('.pcard >> nth=0 >> [data-d="1"]')
-            await m.click(".cartbar"); await m.wait_for_selector("#qbox .sum"); await m.fill("#addr", "Navoiy, Galaba 5-uy")
+            await m.click(".prow"); await m.wait_for_selector(".mi")
+            await m.click('.mi >> nth=0 >> [data-a="qty"]'); await m.click('.mi >> nth=0 >> [data-d="1"]')
+            await m.click(".bottombar .btn"); await m.wait_for_selector("#qbox .label"); await m.fill("#addr", "Navoiy, Galaba 5-uy")
             await m.click("#place"); await m.wait_for_selector("#ph"); await m.fill("#ph", "977009988"); await m.click('[data-a="otp"]')
             await m.wait_for_selector('#dev:has-text("kod")'); await m.fill("#code", (await m.text_content("#dev")).split("—")[-1].strip()); await m.fill("#nm", "Aziz")
-            await m.click('[data-a="login"]'); await m.wait_for_selector("#qbox .opts"); await m.click("#place")
-            await m.wait_for_selector('[data-a="testpay"]'); await m.click('[data-a="testpay"]'); await m.wait_for_selector(".tl")
+            await m.click('[data-a="login"]'); await m.wait_for_selector("#qbox .label"); await m.click("#place")
+            await m.wait_for_selector('[data-a="testpay"]'); await m.click('[data-a="testpay"]'); await m.wait_for_selector(".prog")
             await m.screenshot(path=f"{OUT}/11-mijoz-order.png")
             # ---- Biznes: SSE orqali yangi buyurtma keldi → qabul
             await pos.wait_for_selector(".dcard.new", timeout=8000); await pos.screenshot(path=f"{OUT}/03-biznes-new-order.png")

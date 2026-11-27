@@ -217,7 +217,7 @@ export default function delivery(ctx: Ctx) {
   const publicOrder = (o) => {
     const b = db.prepare('SELECT name, code FROM businesses WHERE id=?').get(o.business_id);
     const { dirty, commission, commission_percent, pos_order_id, settlement_id, offer_courier_id, offer_expires, offer_declined, handover_code, code_attempts, courier_info, pos_pending, ...rest } = o;
-    return { ...rest, place: b?.name, place_code: b?.code, ...ext.publicExtra(o) };
+    return { ...rest, place: b?.name, place_code: b?.code, place_type: settingsOf(o.business_id).place_type, ...ext.publicExtra(o) }; // place_type — ilovada joy fotosi
   };
   route('GET', '/api/c/orders', null, ({ req }) => {
     const u = appUser(req);

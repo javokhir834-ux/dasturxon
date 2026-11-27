@@ -17,3 +17,6 @@
 | dokon.jpg | https://www.pexels.com/photo/small-local-greengrocers-shop-26309839/ |
 
 Toifa ikonkalari (`../icons.js`) — o'zimiz chizgan SVG.
+
+## Ikonkalar
+- `public/lucide.js` — [Lucide](https://lucide.dev) ikonkalari, ISC litsenziyasi (Feather qismlari — MIT). FastHub prototipidagi to'plamdan olingan.
