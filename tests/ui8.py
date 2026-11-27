@@ -68,7 +68,7 @@ async def main():
             k = await kc.new_page(); watch(k, "kuryer")
             await connect(k, 8096); await k.wait_for_selector("#ph"); await k.fill("#ph", "935557777"); await k.click('[data-a="otp"]')
             await k.wait_for_selector('#dev:has-text("kod")'); await k.fill("#code", (await k.text_content("#dev")).split("—")[-1].strip()); await k.click('[data-a="login"]')
-            await k.wait_for_selector(".online"); await k.click(".online"); await k.wait_for_selector(".online.on")
+            await k.wait_for_selector('[data-a="online"]'); await k.click('[data-a="online"]'); await k.wait_for_selector('[data-a="online"].on')
             await k.wait_for_selector(".offer", timeout=25000); await k.screenshot(path=f"{OUT}/20-kuryer-offer.png")
             await k.click('[data-a="accept"]'); await k.wait_for_selector('[data-v="arrived_rest"]'); await k.screenshot(path=f"{OUT}/21-kuryer-order.png")
             await pos.wait_for_selector(".cline", timeout=8000); await pos.screenshot(path=f"{OUT}/04-biznes-courier.png")

@@ -35,7 +35,7 @@ function tabbar(cur) {
 /** Sahifa: tab — pastki panel bilan (asosiy bo'limlar), aks holda orqaga tugmali "push" ekran */
 function page(html, { tab = null, keep = false, extra = '' } = {}) {
   const y = window.scrollY;
-  $('#app').innerHTML = `<div class="scr ${tab ? '' : 'push notab'} ${extra.includes('bottombar') ? 'withbar' : ''}">${html}</div>${extra}${tab ? tabbar(tab) : ''}`;
+  $('#app').innerHTML = `<div class="scr ${tab ? '' : 'push notab'} ${extra.includes('bottombar') ? 'withbar' : ''} ${keep ? 'still' : ''}">${html}</div>${extra}${tab ? tabbar(tab) : ''}`;
   window.scrollTo(0, keep ? y : 0);
 }
 const backBtn = (h) => `<button class="circle press" data-a="back" data-v="${h}" aria-label="Orqaga">${ic('chevron-left', 22, { w: 2.4 })}</button>`;

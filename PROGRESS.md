@@ -358,7 +358,14 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 - Brauzer testlari (`ui6/8/9.py`) yangi selektorlarga moslandi (`.prow`, `.mi`, `.bottombar .btn`, `.prog`).
 - Prototipdagi, lekin hali yo'q: xarita (Leaflet + OSRM — tashqi xizmat, CSP va O'zbekistondagi tile serverini hal qilish kerak), reyting (joy reytingi
   bazada yo'q — uydirma raqam ko'rsatilmaydi), bonus/promokod/FastHub Plus (biznes qarori), til almashtirish (ru).
-- **Keyingi bosqichlar:** 2 — kuryer ilovasi (prototipdagi qorong'i tema), 3 — biznes paneli (yon menyu + kanban doska), 4 — xarita.
+- **2-bosqich — kuryer ilovasi (tugadi):** `public/courier/courier.css` (qorong'i, mustaqil) va `courier.js` qayta chizildi. Pastki tablar: Buyurtma / Daromad / Profil.
+  Ish ekrani: avatar, "Onlayn / Ishga chiqish" tugmasi, bugungi daromad; radar va kutish kartasi; taklif — oq pastki varaq (teskari sanoq doirasi, marshrut, naqd/to'langan belgisi);
+  faol buyurtma — 4 bosqichli karta (Restoran, Olish, Yo'lda, Topshirish), Yo'l/Qo'ng'iroq tugmalari, katta kod maydoni. Daromad: oxirgi 7 kun ustunli grafigi (hisob harakatlaridan),
+  balans, harakatlar, buyurtmalar, nizolar. Profil: hujjatlar holati, transport, qoidalar, huquqiy havolalar, chiqish, akkauntni o'chirish. Ro'yxat: 4 bosqichli forma.
+  Eski "Qoidalar" tabi Profilga ko'chdi. `public/app/app.css` o'chirildi (endi ishlatilmaydi).
+- Poll (kuryer 3 s, buyurtma kuzatish 5 s) qayta chizganda paydo bo'lish animatsiyasi takrorlanmaydi (`.scr.still`); kuryerda ochiq "Mijoz chiqmayaptimi?" bo'limi yopilib qolmaydi.
+- Brauzer testlari `ui7/ui8.py`: `.online` → `[data-a="online"]`.
+- **Keyingi bosqichlar:** 3 — biznes paneli (yon menyu + kanban doska), 4 — xarita.
 
 ## 11-etap (taklif) — pilotdan keyin
 - Pilot fikrlari bo'yicha tuzatishlar; restoran o'z muqova rasmini yuklashi; promokodlar va referal; mijoz manzillar daftari.

@@ -1,4 +1,5 @@
-// Dasturxon — kuryer ilovasi (7-etap): ro'yxat, liniya, takliflar, buyurtmani olish va topshirish, hisob.
+// FastHub Kuryer — kuryer ilovasi (FastHub prototipi dizayni, qorong'i): ro'yxat, liniya, takliflar, olish va topshirish, daromad, profil.
+// Build'siz vanilla JS. Ikonkalar: /lucide.js (ic).
 'use strict';
 (() => {
 const $ = (s, r = document) => r.querySelector(s);
@@ -10,12 +11,17 @@ const store = { get(k) { try { return localStorage.getItem(k); } catch { return 
 const fmtPhone = (p) => (p && p.length === 12 ? `+${p.slice(0, 3)} ${p.slice(3, 5)} ${p.slice(5, 8)} ${p.slice(8, 10)} ${p.slice(10)}` : p || '');
 const kmTxt = (k) => (k == null ? '' : k < 1 ? `${Math.round(k * 1000)} m` : `${k.toFixed(1)} km`);
 const mapUrl = (lat, lng) => (lat != null ? `https://yandex.uz/maps/?rtext=~${lat},${lng}&rtt=auto` : '');
-const VEH = [['piyoda', 'Piyoda'], ['velosiped', 'Velosiped'], ['moto', 'Moto/skuter'], ['avto', 'Avtomobil']];
-const DOCS = [['passport', 'Pasport (yuz tomoni)'], ['selfie', 'Pasport bilan selfi'], ['license', 'Haydovchilik guvohnomasi'], ['vehicle', 'Transport rasmi (ixtiyoriy)']];
+const initials = (n) => String(n || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
+const VEH = [['piyoda', 'Piyoda', 'user'], ['velosiped', 'Velosiped', 'bike'], ['moto', 'Moto/skuter', 'bike'], ['avto', 'Avtomobil', 'truck']];
+const DOCS = [['passport', 'Pasport (yuz tomoni)', 'id-card'], ['selfie', 'Pasport bilan selfi', 'scan-face'], ['license', 'Haydovchilik guvohnomasi', 'credit-card'], ['vehicle', 'Transport rasmi (ixtiyoriy)', 'bike']];
+const RING = 151; // taklif doirasi uzunligi (r=24)
 
 const S = { token: store.get('dx_ktoken'), st: null, tab: 'main', poll: null, geo: null, lastLoc: 0, test: null, answers: [], offerSeen: null };
 
-function toast(msg, err) { const t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.textContent = msg; $('#toasts').append(t); setTimeout(() => t.remove(), err ? 4500 : 2500); }
+function toast(msg, err) {
+  const t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : '');
+  t.innerHTML = ic(err ? 'info' : 'circle-check', 20) + `<span>${esc(msg)}</span>`; $('#toasts').append(t); setTimeout(() => t.remove(), err ? 4500 : 2500);
+}
 async function api(method, path, body) {
   const r = await fetch(path, { method, headers: { 'Content-Type': 'application/json', ...(S.token ? { Authorization: 'Bearer ' + S.token } : {}) }, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json().catch(() => ({}));
@@ -24,7 +30,6 @@ async function api(method, path, body) {
   return j;
 }
 const run = async (fn) => { try { return await fn(); } catch (e) { toast(e.message, true); } };
-const head = (t, right = '') => `<header class="ctop"><h1><span style="color:var(--accent)">●</span> ${t}</h1>${right}</header>`;
 
 // Rasm: telefonda kamera → 1200 px JPEG
 function pickPhoto() {
@@ -67,198 +72,241 @@ async function refresh() {
   S.st = st;
   if (st.me.online || st.order) startGeo(); else stopGeo();
   if (newOffer) { S.offerSeen = st.offer.id; S.offerTotal = Math.max(5, (new Date(st.offer.expires) - Date.now()) / 1000); try { navigator.vibrate?.([300, 150, 300]); } catch {} }
-  // kod/matn yozilayotganda va "Hisob" sahifasida ekranni buzmaymiz (faqat yangi taklif kelsa)
-  if (!newOffer && (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || $('#bapp')?.value || (S.tab === 'history' && st.me.status !== 'blocked'))) return;
+  // kod/matn yozilayotganda va Daromad/Profil sahifasida ekranni buzmaymiz (faqat yangi taklif kelsa)
+  if (!newOffer && (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || $('#bapp')?.value || $('.trip details[open]') || (S.tab !== 'main' && st.me.status !== 'blocked'))) return;
   render();
 }
 function startPoll() { clearInterval(S.poll); S.poll = setInterval(() => { if (!document.hidden) refresh(); }, 3000); }
 
-// ---------- Ekranlar ----------
-function render() {
-  const a = $('#app');
-  if (!S.token) return viewLogin(a);
-  if (!S.st) { a.innerHTML = head('Kuryer') + '<div class="empty">Yuklanmoqda…</div>'; return; }
-  const me = S.st.me;
-  if (['draft', 'rejected'].includes(me.status)) return viewRegister(a, me);
-  if (me.status === 'pending') return (a.innerHTML = head('Kuryer', logoutBtn()) + `<div class="empty"><div class="ic">⏳</div><h2>Arizangiz tekshirilmoqda</h2>
-    <p>Hujjatlaringizni platforma xodimi ko'rib chiqadi (odatda 1 ish kuni). Tasdiqlangach shu yerda ishni boshlaysiz.</p>
-    <p class="muted small">Depozit topshirsangiz, naqd to'lovli buyurtmalar ham keladi.</p></div>`);
-  if (me.status === 'deleting') return (a.innerHTML = head('Kuryer', logoutBtn()) + `<div class="empty"><div class="ic">🗑</div><h2>O'chirish so'ralgan</h2>
-    <p>Hisob-kitob (naqd, daromad, depozit) yakunlangach akkauntingiz o'chiriladi. Platforma siz bilan bog'lanadi.</p></div>`);
-  if (me.status === 'blocked') return (a.innerHTML = head('Kuryer', logoutBtn()) + `<div class="empty"><div class="ic">⛔</div><h2>Hisobingiz bloklangan</h2><p>${esc(me.status_reason)}</p>
-    <div class="panel" style="text-align:left"><h3>E'tiroz bildirish</h3><textarea id="bapp" rows="3" maxlength="1000" placeholder="Nega blokdan chiqarish kerakligini yozing"></textarea>
-    <button class="btn primary block" style="margin-top:8px" data-a="blockAppeal">Yuborish</button></div></div>`);
-  if (S.tab === 'history') return viewHistory(a);
-  if (S.tab === 'rules') return viewRules(a);
-  viewMain(a);
-}
-const logoutBtn = () => `<button class="btn sm" data-a="logout">Chiqish</button>`;
-const tabs = () => `<nav class="tabsb">${[['main', '🛵 Ish'], ['history', '💰 Hisob'], ['rules', '📋 Qoidalar']].map(([k, n]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}">${n}</button>`).join('')}</nav>`;
-
-function viewLogin(a) {
-  a.innerHTML = head('FastHub Kuryer') + `<div class="csec"><div class="panel"><h3>Kuryer bo'lib ishlash</h3>
-    <p class="muted small">O'z vaqtingizda ishlaysiz, har buyurtma uchun haq olasiz. Telefon raqamingiz bilan kiring.</p>
-    <input id="ph" type="tel" inputmode="tel" placeholder="+998 90 123 45 67" value="${esc(store.get('dx_kphone') || '')}">
-    <button class="btn primary block big" style="margin-top:12px" data-a="otp">Kod olish</button>
-    <div id="s2" hidden><label>SMS kod</label><input id="code" class="otp" inputmode="numeric" maxlength="5">
-    <button class="btn primary block big" style="margin-top:12px" data-a="login">Kirish</button><div id="dev" class="devcode"></div></div>
-    <p class="muted small" style="margin-top:12px">Kirish orqali ${legalLink('terms', 'foydalanish shartlari')} va ${legalLink('privacy', 'maxfiylik siyosati')}ga rozilik bildirasiz.</p></div></div>`;
-}
-// 10-etap: huquqiy sahifalar serverda (/legal/*) va akkauntni o'chirish
+// ---------- Umumiy ----------
+const TABS = [['main', 'package', 'Buyurtma'], ['history', 'chart-column', 'Daromad'], ['profile', 'user', 'Profil']];
+const tabbar = () => `<nav class="tabbar">${TABS.map(([k, i, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}">${ic(i, 25, { w: S.tab === k ? 2.3 : 1.9 })}${l}</button>`).join('')}</nav>`;
+// Poll har 3 s qayta chizadi — ekran (tab, holat, buyurtma bosqichi) o'zgarmasa, paydo bo'lish animatsiyasi takrorlanmaydi
+const screen = (html, tabs = true) => {
+  const me = S.st?.me, key = [S.token ? 1 : 0, S.tab, me?.status, S.st?.order?.courier_status, S.st?.offer?.id, S.regStep].join('|');
+  const still = key === S.lastKey; S.lastKey = key;
+  $('#app').innerHTML = `<div class="scr ${still ? 'still' : ''}">${html}</div>${tabs ? tabbar() : ''}`;
+};
+const title = (t, right = '') => `<div class="row sb" style="margin:0 4px 14px"><h1 class="h1">${t}</h1>${right}</div>`;
+const logoutBtn = () => `<button class="btn sm sec" data-a="logout">${ic('log-out', 16)} Chiqish</button>`;
 const legalLink = (page, text) => `<a href="${esc(DX.asset('/legal/' + page))}" target="_blank" rel="noopener">${text}</a>`;
-const legalFooter = () => `<div class="muted small" style="text-align:center;margin-top:14px">${legalLink('privacy', 'Maxfiylik siyosati')} · ${legalLink('terms', 'Foydalanish shartlari')}
-  <details style="margin-top:12px;text-align:left" class="panel"><summary>Akkauntni o'chirish</summary>
-  <p class="muted small">Ism, telefon, hujjat rasmlari va joylashuv o'chiriladi. Hisobingizda naqd, daromad yoki depozit qolgan bo'lsa — so'rov qabul qilinadi va platforma hisob-kitobdan keyin o'chiradi. ${legalLink('delete', 'Batafsil')}</p>
-  <button class="btn sm block" data-a="delOtp">SMS kod olish</button>
-  <div id="ds2" hidden><label>SMS kod</label><input id="dcode" class="otp" inputmode="numeric" maxlength="5">
-  <button class="btn danger block" style="margin-top:8px" data-a="delConfirm">Akkauntni o'chirish</button><div id="ddev" class="devcode"></div></div></details></div>`;
+const status = (icon, h, p, extra = '') => screen(`${title('Kuryer', logoutBtn())}<div class="empty"><span class="big">${ic(icon, 36, { w: 1.7 })}</span><h2>${h}</h2><p class="mut">${p}</p>${extra}</div>`, false);
 
-function viewRegister(a, me) {
-  const step = !me.name || !me.vehicle ? 1 : !['passport', 'selfie', ...(['moto', 'avto'].includes(me.vehicle) ? ['license'] : [])].every((k) => me.docs.includes(k)) ? 2 : !me.test_passed ? 3 : 4;
+function render() {
+  if (!S.token) return viewLogin();
+  if (!S.st) return screen('<div class="empty"><span class="mut">Yuklanmoqda…</span></div>', false);
+  const me = S.st.me;
+  if (['draft', 'rejected'].includes(me.status)) return viewRegister(me);
+  if (me.status === 'pending') return status('clipboard-list', 'Arizangiz tekshirilmoqda', "Hujjatlaringizni platforma xodimi ko'rib chiqadi (odatda 1 ish kuni). Tasdiqlangach shu yerda ishni boshlaysiz. Depozit topshirsangiz, naqd to'lovli buyurtmalar ham keladi.");
+  if (me.status === 'deleting') return status('x', "O'chirish so'ralgan", "Hisob-kitob (naqd, daromad, depozit) yakunlangach akkauntingiz o'chiriladi. Platforma siz bilan bog'lanadi.");
+  if (me.status === 'blocked') return status('shield-check', 'Hisobingiz bloklangan', esc(me.status_reason), `<div class="card" style="width:100%;text-align:left">
+    <b>E'tiroz bildirish</b><textarea id="bapp" class="inp" style="margin-top:10px" rows="3" maxlength="1000" placeholder="Nega blokdan chiqarish kerakligini yozing"></textarea>
+    <button class="btn" style="margin-top:10px" data-a="blockAppeal">Yuborish</button></div>`);
+  if (S.tab === 'history') return viewHistory();
+  if (S.tab === 'profile') return viewProfile();
+  viewMain();
+}
+
+// ---------- Kirish va ro'yxat ----------
+function viewLogin() {
+  screen(`<div style="margin:18px 4px 18px"><span class="ava lg" style="background:var(--acc);margin-bottom:16px">${ic('bike', 30)}</span>
+      <h1 class="h1">FastHub Kuryer</h1><p class="mut" style="margin:6px 0 0">O'z vaqtingizda ishlaysiz, har buyurtma uchun haq olasiz.</p></div>
+    <div class="card"><span class="flabel" style="margin-top:0">Telefon raqam</span><input id="ph" class="inp" type="tel" inputmode="tel" placeholder="+998 90 123 45 67" value="${esc(store.get('dx_kphone') || '')}">
+      <button class="btn" style="margin-top:12px" data-a="otp">Kod olish</button>
+      <div id="s2" hidden><span class="flabel">SMS kod</span><input id="code" class="inp otp" inputmode="numeric" maxlength="5">
+        <button class="btn" style="margin-top:12px" data-a="login">Kirish</button><div id="dev" class="devcode"></div></div></div>
+    <p class="mut sm" style="text-align:center;margin:14px 10px">Kirish orqali ${legalLink('terms', 'foydalanish shartlari')} va ${legalLink('privacy', 'maxfiylik siyosati')}ga rozilik bildirasiz.</p>`, false);
+}
+function viewRegister(me) {
+  const need = ['passport', 'selfie', ...(['moto', 'avto'].includes(me.vehicle) ? ['license'] : [])];
+  const step = !me.name || !me.vehicle ? 1 : !need.every((k) => me.docs.includes(k)) ? 2 : !me.test_passed ? 3 : 4;
   const cur = S.regStep || step;
-  const bar = `<div class="steps">${[1, 2, 3, 4].map((i) => `<i class="${i <= cur ? 'on' : ''}"></i>`).join('')}</div>`;
+  const bar = `<div class="steps" style="margin-bottom:16px">${["Ma'lumot", 'Hujjatlar', 'Test', 'Ariza'].map((l, i) => `<span class="${i + 1 <= cur ? 'on' : ''}"><i></i>${l}</span>`).join('')}</div>`;
   let body = '';
-  if (cur === 1) body = `<h3>1. Ma'lumotlaringiz</h3><label>Ism-familiya (pasportdagidek)</label><input id="nm" value="${esc(me.name)}">
-    <label>Transport</label><div class="opts">${VEH.map(([k, n]) => `<button class="opt ${me.vehicle === k ? 'on' : ''}" data-a="veh" data-v="${k}"><i></i>${n}</button>`).join('')}</div>
-    <div id="vnb" ${['moto', 'avto'].includes(S.veh || me.vehicle) ? '' : 'hidden'}><label>Davlat raqami</label><input id="vno" value="${esc(me.vehicle_no)}" placeholder="01A123BC"></div>
-    <button class="btn primary block big" style="margin-top:14px" data-a="saveProfile">Davom etish</button>`;
-  if (cur === 2) body = `<h3>2. Hujjatlar</h3><p class="muted small">Rasmlar faqat platforma xodimiga ko'rinadi. Aniq va o'qiladigan bo'lsin.</p>
-    ${DOCS.filter(([k]) => k !== 'license' || ['moto', 'avto'].includes(me.vehicle)).map(([k, n]) => `<div class="docrow"><span class="grow">${me.docs.includes(k) ? '✅' : '⬜'} ${n}</span>
-      <button class="btn sm ${me.docs.includes(k) ? '' : 'primary'}" data-a="doc" data-v="${k}">${me.docs.includes(k) ? 'Qayta' : '📷 Olish'}</button></div>`).join('')}
-    <p class="muted small">MyID orqali shaxsni tasdiqlash platforma tomonidan qo'shiladi.</p>
-    <div class="row"><button class="btn" data-a="regStep" data-v="1">Orqaga</button><button class="btn primary grow" data-a="regStep" data-v="3">Davom etish</button></div>`;
-  if (cur === 3) body = S.test ? `<h3>3. Qoidalar testi</h3><p class="muted small">8 savoldan kamida 7 tasiga to'g'ri javob bering.</p>
-    ${S.test.map((x, i) => `<div class="q"><b>${i + 1}. ${esc(x.q)}</b><div class="opts">${x.a.map((t, j) => `<button class="opt ${S.answers[i] === j ? 'on' : ''}" data-a="ans" data-q="${i}" data-v="${j}"><i></i>${esc(t)}</button>`).join('')}</div></div>`).join('')}
-    <button class="btn primary block big" data-a="sendTest">Javoblarni yuborish</button>` : '<div class="empty">Yuklanmoqda…</div>';
-  if (cur === 4) body = `<h3>4. Arizani yuborish</h3><div class="note ok">Ma'lumotlar, hujjatlar va test tayyor.</div>
-    <p class="muted small" style="margin-top:12px">Tasdiqlangach <b>sinov davri</b> boshlanadi (birinchi buyurtmalar). Reyting 4.5 dan past bo'lsa — ogohlantirish, 4.0 dan past — blok.</p>
-    <button class="btn primary block big" data-a="submit">Arizani yuborish</button>`;
-  a.innerHTML = head("Ro'yxatdan o'tish", logoutBtn()) + `<div class="csec">${me.status === 'rejected' ? `<div class="note danger" style="margin-bottom:12px">Ariza rad etildi: ${esc(me.status_reason)}. Tuzatib qayta yuboring.</div>` : ''}<div class="panel">${bar}${body}</div></div>`;
+  if (cur === 1) body = `<b style="font-size:20px">Ma'lumotlaringiz</b><span class="flabel">Ism-familiya (pasportdagidek)</span><input id="nm" class="inp" value="${esc(me.name)}">
+    <span class="flabel">Transport</span><div class="list">${VEH.map(([k, n, i]) => `<button class="li press ${(S.veh || me.vehicle) === k ? 'on' : ''}" data-a="veh" data-v="${k}"><span class="ib">${ic(i, 18)}</span><b class="grow" style="font-weight:600">${n}</b><span class="radio"></span></button>`).join('')}</div>
+    <div id="vnb" ${['moto', 'avto'].includes(S.veh || me.vehicle) ? '' : 'hidden'}><span class="flabel">Davlat raqami</span><input id="vno" class="inp" value="${esc(me.vehicle_no)}" placeholder="01A123BC"></div>
+    <button class="btn big" style="margin-top:16px" data-a="saveProfile">Davom etish</button>`;
+  if (cur === 2) body = `<b style="font-size:20px">Hujjatlar</b><p class="mut sm" style="margin:4px 0 6px">Rasmlar faqat platforma xodimiga ko'rinadi. Aniq va o'qiladigan bo'lsin.</p>
+    <div class="list">${DOCS.filter(([k]) => k !== 'license' || ['moto', 'avto'].includes(me.vehicle)).map(([k, n, i]) => `<div class="li"><span class="ib">${ic(i, 18)}</span><span class="t"><b>${n}</b><span>${me.docs.includes(k) ? 'Yuklangan' : 'Kerak'}</span></span>
+      <button class="btn sm ${me.docs.includes(k) ? 'sec' : ''}" data-a="doc" data-v="${k}">${me.docs.includes(k) ? 'Qayta' : 'Rasmga olish'}</button></div>`).join('')}</div>
+    <p class="mut xs">MyID orqali shaxsni tasdiqlash platforma tomonidan qo'shiladi.</p>
+    <div class="row" style="margin-top:10px"><button class="btn sec" style="width:auto" data-a="regStep" data-v="1">Orqaga</button><button class="btn" data-a="regStep" data-v="3">Davom etish</button></div>`;
+  if (cur === 3) body = S.test ? `<b style="font-size:20px">Qoidalar testi</b><p class="mut sm" style="margin:4px 0 0">${S.test.length} savoldan kamida ${S.test.length - 1} tasiga to'g'ri javob bering.</p>
+    ${S.test.map((x, i) => `<div class="q"><b>${i + 1}. ${esc(x.q)}</b><div class="card2 list" style="padding:0 14px">${x.a.map((t, j) => `<button class="li press ${S.answers[i] === j ? 'on' : ''}" data-a="ans" data-q="${i}" data-v="${j}"><span class="grow" style="font-size:14px">${esc(t)}</span><span class="radio"></span></button>`).join('')}</div></div>`).join('')}
+    <button class="btn big" style="margin-top:16px" data-a="sendTest">Javoblarni yuborish</button>` : '<p class="mut">Yuklanmoqda…</p>';
+  if (cur === 4) body = `<b style="font-size:20px">Arizani yuborish</b><div class="note ok" style="margin-top:10px">${ic('circle-check', 18)}<span>Ma'lumotlar, hujjatlar va test tayyor.</span></div>
+    <p class="mut sm">Tasdiqlangach <b>sinov davri</b> boshlanadi. Reyting 4.5 dan past bo'lsa — ogohlantirish, 4.0 dan past — blok.</p>
+    <button class="btn big" data-a="submit">Arizani yuborish</button>`;
+  screen(`${title("Ro'yxat", logoutBtn())}${me.status === 'rejected' ? `<div class="note bad" style="margin-bottom:12px">${ic('info', 18)}<span>Ariza rad etildi: ${esc(me.status_reason)}. Tuzatib qayta yuboring.</span></div>` : ''}
+    <div class="card">${bar}${body}</div>`, false);
   if (cur === 3 && !S.test) api('GET', '/api/k/test').then((t) => { S.test = t; render(); }).catch((e) => toast(e.message, true));
 }
 
-function viewMain(a) {
+// ---------- Ish: liniya, taklif, faol buyurtma ----------
+function viewMain() {
   const { me, offer, order } = S.st;
-  let html = head(esc(me.name.split(' ')[0] || 'Kuryer'), `<span class="chip ok">${esc(me.level)}</span><span class="chip">⭐ ${me.ratings ? me.rating.toFixed(2) : '—'}</span>`);
-  html += '<div class="csec">';
-  if (me.mustSettle) html += `<div class="note danger" style="margin-bottom:12px">Qo'lingizdagi ${som(me.hand)} naqd 24 soatdan beri topshirilmagan. Topshirmaguningizcha yangi buyurtma kelmaydi.</div>`;
-  if (me.rating_warn) html += `<div class="note warn" style="margin-bottom:12px">Reytingingiz ${me.rating.toFixed(2)} — 4.5 dan past. 4.0 dan tushsa hisob bloklanadi.</div>`;
-  if (order) html += orderCard(order);
+  let html = `<div class="ktop"><button class="ava press" data-a="tab" data-v="profile">${esc(initials(me.name))}</button>
+    ${order ? `<span class="toggle on"><i></i>Buyurtmada</span>` : `<button class="toggle press ${me.online ? 'on' : ''}" data-a="online"><i></i>${me.online ? 'Onlayn' : 'Ishga chiqish'}</button>`}
+    <button class="earnpill press" data-a="tab" data-v="history"><span>Bugun</span><b>${money(me.earnedToday)}</b></button></div>`;
+  const notes = [me.mustSettle && `<div class="note bad">${ic('banknote', 18)}<span>Qo'lingizdagi ${som(me.hand)} naqd 24 soatdan beri topshirilmagan. Topshirmaguningizcha yangi buyurtma kelmaydi.</span></div>`,
+    me.rating_warn && `<div class="note warn">${ic('star', 18)}<span>Reytingingiz ${me.rating.toFixed(2)} — 4.5 dan past. 4.0 dan tushsa hisob bloklanadi.</span></div>`,
+    me.status === 'probation' && `<div class="note">${ic('award', 18)}<span>Sinov davri: yana <b>${me.probation_left}</b> ta buyurtma.</span></div>`].filter(Boolean);
+  if (notes.length) html += `<div class="gap" style="margin-top:14px">${notes.join('')}</div>`;
+  if (order) html += `<div style="margin-top:14px">${tripCard(order)}</div>`;
   else {
-    html += `<button class="online ${me.online ? 'on' : ''}" data-a="online">${me.online ? '🟢 Liniyadasiz — buyurtma kutilmoqda' : '⚪ Liniyaga chiqish'}</button>
-      <p class="muted small" style="text-align:center">${me.online ? "Ilovani yopmang. GPS yoqilgan bo'lishi kerak." : "Liniyaga chiqsangiz, yaqin buyurtmalar taklif qilinadi."}</p>`;
+    html += `<div class="radar ${me.online ? '' : 'off'}"><span class="me">${ic('navigation', 24)}</span></div>
+      <div class="wait ${me.online ? '' : 'off'}"><span class="p"></span><span class="col" style="gap:3px"><b style="font-size:16px">${me.online ? 'Buyurtma qidirilmoqda…' : 'Siz oflaynsiz'}</b>
+        <span class="mut sm">${me.online ? "Ilovani yopmang. GPS yoqilgan bo'lishi kerak." : "Buyurtma olish uchun onlayn bo'ling"}</span></span></div>`;
   }
-  html += `<div class="kstats" style="margin-top:14px">
-    <div class="stat"><div class="muted small">Bugungi daromad</div><div class="v">${som(me.earnedToday)}</div></div>
-    <div class="stat"><div class="muted small">Qo'lingizdagi naqd</div><div class="v" style="${me.hand ? 'color:var(--warn)' : ''}">${som(me.hand)}</div></div>
-    <div class="stat"><div class="muted small">Naqd limiti</div><div class="v">${som(me.cash_limit)}</div><div class="muted small">depozit ${money(me.deposit)}</div></div>
-    <div class="stat"><div class="muted small">Yetkazilgan</div><div class="v">${me.completed}</div>${me.level_bonus ? `<div class="muted small">+${money(me.level_bonus)} bonus/buyurtma</div>` : ''}</div></div>
-    ${me.status === 'probation' ? `<div class="note" style="margin-top:12px">Sinov davri: yana <b>${me.probation_left}</b> ta buyurtma.</div>` : ''}
-    ${me.next_level ? `<p class="muted small">Keyingi daraja — <b>${me.next_level.name}</b>: ${me.next_level.min} ta buyurtma, reyting ${me.next_level.rating}+, bonus ${money(me.next_level.bonus)}/buyurtma.</p>` : ''}
-    </div>${tabs()}`;
-  if (offer && !order) html += offerBox(offer);
-  a.innerHTML = html;
-  if (offer) tickOffer();
+  html += `<div class="stats2" style="margin-top:14px">
+    <span><span class="mut xs">Qo'lingizdagi naqd</span><b style="${me.hand ? 'color:var(--warn-hi)' : ''}">${som(me.hand)}</b></span>
+    <span><span class="mut xs">Naqd limiti</span><b>${som(me.cash_limit)}</b><span class="mut xs">depozit ${money(me.deposit)}</span></span>
+    <span><span class="mut xs">Yetkazilgan</span><b>${me.completed}</b></span>
+    <span><span class="mut xs">Daraja</span><b style="color:var(--acc-hi)">${esc(me.level)}</b>${me.level_bonus ? `<span class="mut xs">+${money(me.level_bonus)} bonus</span>` : ''}</span></div>
+    ${me.next_level ? `<p class="mut xs" style="margin:12px 4px 0">Keyingi daraja — <b>${esc(me.next_level.name)}</b>: ${me.next_level.min} ta buyurtma, reyting ${me.next_level.rating}+, bonus ${money(me.next_level.bonus)}/buyurtma.</p>` : ''}`;
+  screen(html);
+  if (offer && !order) { $('#app').insertAdjacentHTML('beforeend', offerSheet(offer)); tickOffer(); }
 }
-function offerBox(o) {
-  return `<div class="offer"><div class="box"><div class="row"><b style="font-size:18px" class="grow">Yangi buyurtma</b><span class="chip" id="otime"></span></div>
-    <div class="bar"><i id="obar" style="width:100%"></i></div>
-    <div class="fee">${som(o.fee)}</div>
-    <div style="margin:10px 0"><b>${esc(o.place)}</b>${o.to_place_km != null ? ` · ${kmTxt(o.to_place_km)} sizdan` : ''}<div class="muted small">${esc(o.place_address || '')}</div></div>
-    <div>📍 ${esc(o.address)}${o.trip_km != null ? ` <span class="muted small">(${kmTxt(o.trip_km)} yo'l)</span>` : ''}</div>
-    <div class="muted small" style="margin-top:4px">${o.items} ta taom · ${o.cash ? `<b style="color:var(--warn)">naqd olish: ${som(o.cash)}</b>` : "to'langan"}</div>
-    <div class="row" style="margin-top:16px"><button class="btn big" data-a="decline" data-id="${o.id}">Rad etish</button><button class="btn primary big grow" data-a="accept" data-id="${o.id}">Qabul qilish</button></div></div></div>`;
+function offerSheet(o) {
+  return `<div class="backdrop"></div><div class="offer">
+    <div class="row sb"><span class="col" style="gap:2px"><span class="mut sm" style="font-weight:600">Yangi buyurtma · #${o.id}</span><b class="fee">${som(o.fee)}</b></span>
+      <svg width="56" height="56" viewBox="0 0 56 56" role="img" aria-label="Qolgan vaqt"><circle cx="28" cy="28" r="24" fill="none" stroke="#F2F2F7" stroke-width="5"/>
+        <circle id="oring" cx="28" cy="28" r="24" fill="none" stroke="#D43F05" stroke-width="5" stroke-linecap="round" stroke-dasharray="${RING}" transform="rotate(-90 28 28)" style="transition:stroke-dashoffset .9s linear"/>
+        <text id="otime" x="28" y="33" text-anchor="middle" font-size="14" font-weight="800" fill="#111"></text></svg></div>
+    ${o.cash ? `<span class="pill warn" style="align-self:flex-start">${ic('banknote', 14)}Mijozdan naqd: ${som(o.cash)}</span>` : `<span class="pill ok" style="align-self:flex-start">${ic('shield-check', 14)}To'langan — mijoz kelmasa ham haq to'lanadi</span>`}
+    <div class="route"><span class="rail"><i></i><s></s><u></u></span><span class="col grow" style="gap:12px">
+      <span class="col"><b style="font-size:16px">${esc(o.place)}</b><span class="mut sm">Olish${o.to_place_km != null ? ` · ${kmTxt(o.to_place_km)} sizdan` : ''}${o.place_address ? ' · ' + esc(o.place_address) : ''}</span></span>
+      <span class="col"><b style="font-size:16px">${esc(o.address)}</b><span class="mut sm">Yetkazish${o.trip_km != null ? ` · ${kmTxt(o.trip_km)} yo'l` : ''} · ${o.items} ta mahsulot</span></span></span></div>
+    <div class="row" style="gap:10px"><button class="btn sec press" data-a="decline" data-id="${o.id}">O'tkazish</button><button class="btn press" data-a="accept" data-id="${o.id}">Qabul qilish</button></div></div>`;
 }
 function tickOffer() {
   const o = S.st?.offer; if (!o) return;
   const left = Math.max(0, (new Date(o.expires) - Date.now()) / 1000), total = S.offerTotal || 30;
-  const t = $('#otime'), b = $('#obar'); if (t) t.textContent = `${Math.ceil(left)} s`; if (b) b.style.width = Math.min(100, (left / total) * 100) + '%';
+  const t = $('#otime'), r = $('#oring');
+  if (t) t.textContent = `${Math.ceil(left)}s`;
+  if (r) r.style.strokeDashoffset = String(RING * (1 - Math.min(1, left / total)));
 }
 setInterval(tickOffer, 1000);
 
-function orderCard(o) {
+function tripCard(o) {
   const cs = o.courier_status, steps = ['assigned', 'at_restaurant', 'picked', 'at_customer'];
   const idx = steps.indexOf(cs);
-  const bar = `<div class="steps">${steps.map((s, i) => `<i class="${i <= idx ? 'on' : ''}"></i>`).join('')}</div>`;
-  const place = `<div><b>${esc(o.place.name)}</b><div class="muted small">${esc(o.place.address || '')}</div>${o.place.lat != null ? `<a class="btn sm" style="margin-top:8px" target="_blank" rel="noopener" href="${mapUrl(o.place.lat, o.place.lng)}">🧭 Yo'l</a>` : ''}</div>`;
-  const cust = `<div><b>${esc(o.customer.name || 'Mijoz')}</b> · <a href="tel:+${esc(o.customer.phone)}" data-a="call" data-id="${o.id}">${fmtPhone(o.customer.phone)}</a>
-    <div>📍 ${esc(o.customer.address)}</div>${o.customer.note ? `<div class="muted small">💬 ${esc(o.customer.note)}</div>` : ''}
-    <div class="row" style="margin-top:8px;gap:8px">${o.customer.lat != null ? `<a class="btn sm" target="_blank" rel="noopener" href="${mapUrl(o.customer.lat, o.customer.lng)}">🧭 Yo'l</a>` : ''}<a class="btn sm" href="tel:+${esc(o.customer.phone)}" data-a="call" data-id="${o.id}">📞 Qo'ng'iroq</a></div></div>`;
-  const items = `<div class="muted small" style="margin-top:8px">${o.items.map((i) => `${esc(i.name)} × ${i.qty}`).join(', ')}</div>`;
-  const cash = o.cash ? `<div class="note warn" style="margin-top:10px">Mijozdan naqd olasiz: <span class="cash">${som(o.cash)}</span></div>` : `<div class="note ok" style="margin-top:10px">To'langan — mijozdan pul olmaysiz</div>`;
-  let body = '';
-  if (cs === 'assigned') body = `<h3>Restoranga boring</h3>${place}${items}<button class="btn primary block big" style="margin-top:14px" data-a="kact" data-v="arrived_rest" data-id="${o.id}">Restoranga yetib keldim</button>
-    <button class="btn ghost block" style="margin-top:8px" data-a="release" data-id="${o.id}">Voz kechish</button>`;
-  if (cs === 'at_restaurant') body = `<h3>Buyurtmani oling</h3>${place}${items}
-    <div class="note" style="margin-top:10px">Paket yopiq (plombali) ekanini tekshiring. Ochiq yoki yirtilgan bo'lsa — olmang, restoranga ayting.</div>
-    ${o.status === 'ready' ? '' : `<div class="note warn" style="margin-top:10px">Restoran hali tayyorlamoqda…</div>`}
-    <button class="btn primary block big" style="margin-top:14px" data-a="pickup" data-id="${o.id}" ${o.status === 'ready' ? '' : 'disabled'}>📷 Plomba rasmini olib, buyurtmani oldim</button>
-    <button class="btn ghost block" style="margin-top:8px" data-a="release" data-id="${o.id}">Voz kechish</button>`;
-  if (cs === 'picked') body = `<h3>Mijozga yetkazing</h3>${cust}${cash}<button class="btn primary block big" style="margin-top:14px" data-a="kact" data-v="arrived" data-id="${o.id}">Yetib keldim</button>
-    <div class="row" style="margin-top:10px"><input id="kcode" class="codein grow" inputmode="numeric" maxlength="4" placeholder="····"><button class="btn primary big" data-a="deliver" data-id="${o.id}">Topshirdim</button></div>`;
+  const bar = `<div class="steps">${['Restoran', 'Olish', "Yo'lda", 'Topshirish'].map((l, i) => `<span class="${i <= idx ? 'on' : ''}"><i></i>${l}</span>`).join('')}</div>`;
+  const itemsTxt = o.items.map((i) => `${esc(i.name)} × ${i.qty}`).join(', ');
+  const info = `<div class="card2 row"><span class="col grow" style="gap:2px"><span class="mut xs">Buyurtma</span><b style="font-size:20px;letter-spacing:1px">#${o.id}</b></span>
+    <span class="mut sm" style="text-align:right">${o.items.length} xil mahsulot<br>${o.cash ? `<b style="color:var(--warn-hi)">naqd ${som(o.cash)}</b>` : "to'langan"}</span></div>`;
+  const btns = (lat, lng, phone, who) => `<div class="row" style="gap:10px">${lat != null ? `<a class="btn sec press" target="_blank" rel="noopener" href="${mapUrl(lat, lng)}">${ic('navigation', 18)} Yo'l</a>` : ''}
+    ${phone ? `<a class="btn sec press" href="tel:+${esc(phone)}" data-a="call" data-id="${o.id}">${ic('phone', 18)} ${who}</a>` : ''}</div>`;
+  const release = `<button class="link press" data-a="release" data-id="${o.id}">Voz kechish</button>`;
+  let k = '', t = '', a = '', body = '';
+  if (cs === 'assigned') { k = 'Restoranga boring'; t = esc(o.place.name); a = esc(o.place.address || '');
+    body = `${info}${btns(o.place.lat, o.place.lng, null)}<button class="btn big press" data-a="kact" data-v="arrived_rest" data-id="${o.id}">Restoranga yetib keldim</button>${release}`; }
+  if (cs === 'at_restaurant') { k = 'Buyurtmani oling'; t = esc(o.place.name); a = 'Paket yopiq (plombali) ekanini tekshiring';
+    body = `${info}<span class="mut sm">${itemsTxt}</span>${o.status === 'ready' ? '' : `<div class="note warn">${ic('timer', 18)}<span>Restoran hali tayyorlamoqda…</span></div>`}
+      <button class="btn big press" data-a="pickup" data-id="${o.id}" ${o.status === 'ready' ? '' : 'disabled'}>${ic('scan-face', 20)} Plomba rasmi — oldim</button>${release}`; }
+  if (cs === 'picked') { k = 'Mijozga yetkazing'; t = esc(o.customer.address); a = `${esc(o.customer.name || 'Mijoz')} · ${fmtPhone(o.customer.phone)}${o.customer.note ? ' · ' + esc(o.customer.note) : ''}`;
+    body = `${info}${btns(o.customer.lat, o.customer.lng, o.customer.phone, 'Mijoz')}<button class="btn big press" data-a="kact" data-v="arrived" data-id="${o.id}">Yetib keldim</button>
+      <span class="flabel" style="margin:0 2px -8px">Yoki darhol: mijoz kodi</span><div class="row" style="gap:10px"><input id="kcode" class="inp code grow" inputmode="numeric" maxlength="4" placeholder="····"><button class="btn ok press" style="width:auto" data-a="deliver" data-id="${o.id}">${ic('check', 22, { w: 3 })}</button></div>`; }
   if (cs === 'at_customer') {
     const left = Math.max(0, new Date(o.noshow_at) - Date.now());
-    body = `<h3>Topshirish</h3>${cust}${cash}<label style="margin-top:14px">Mijozdan 4 xonali kodni so'rang</label>
-      <input id="kcode" class="codein" inputmode="numeric" maxlength="4" placeholder="····">
-      <button class="btn primary block big" style="margin-top:10px" data-a="deliver" data-id="${o.id}">Topshirdim</button>
-      <details style="margin-top:18px"><summary class="muted">Mijoz chiqmayaptimi?</summary><div class="panel" style="margin-top:10px">
-        <p class="small">1) Qo'ng'iroq qiling ${o.call_at ? '✅' : ''} &nbsp; 2) Eshik/manzil rasmini oling ${o.door_photo ? '✅' : ''} &nbsp; 3) 10 daqiqa kuting</p>
-        <div class="row" style="gap:8px"><a class="btn sm" href="tel:+${esc(o.customer.phone)}" data-a="call" data-id="${o.id}">📞 Qo'ng'iroq</a><button class="btn sm" data-a="door" data-id="${o.id}">📷 Eshik rasmi</button></div>
-        <div class="timer" id="nstimer" data-at="${o.noshow_at}" style="margin:12px 0">${left ? '' : '00:00'}</div>
-        <button class="btn danger block" data-a="noshow" data-id="${o.id}">Mijoz olmadi</button>
-        <p class="muted small">Tartib bajarilsa yo'l haqingiz to'lanadi, taom sizda qoladi.</p></div></details>`;
+    k = 'Topshirish'; t = "Mijozdan 4 xonali kodni so'rang"; a = `${esc(o.customer.address)} · ${esc(o.customer.name || 'Mijoz')}`;
+    body = `${info}<input id="kcode" class="inp code" inputmode="numeric" maxlength="4" placeholder="····"><button class="btn big ok press" data-a="deliver" data-id="${o.id}">${ic('check', 20, { w: 3 })} Topshirdim</button>
+      ${btns(null, null, o.customer.phone, "Qo'ng'iroq")}
+      <details><summary>Mijoz chiqmayaptimi?</summary><div class="card2 col" style="gap:10px;margin-top:8px">
+        <span class="sm">1) Qo'ng'iroq qiling ${o.call_at ? '✓' : ''} · 2) Eshik/manzil rasmini oling ${o.door_photo ? '✓' : ''} · 3) 10 daqiqa kuting</span>
+        <button class="btn sec sm" data-a="door" data-id="${o.id}">${ic('scan-face', 16)} Eshik rasmi</button>
+        <div class="timer" id="nstimer" data-at="${o.noshow_at}">${left ? '' : '00:00'}</div>
+        <button class="btn bad" data-a="noshow" data-id="${o.id}">Mijoz olmadi</button>
+        <span class="mut xs">Tartib bajarilsa yo'l haqingiz to'lanadi, taom sizda qoladi.</span></div></details>`;
   }
-  return `<div class="panel">${bar}${body}<div class="muted small" style="margin-top:12px">Buyurtma #${o.id} · haqingiz ${som(o.fee)}</div></div>`;
+  return `<div class="trip">${bar}<span class="col" style="gap:4px"><span class="k">${k}</span><b class="t">${t}</b><span class="mut sm">${a}</span></span>${body}
+    <span class="mut xs" style="text-align:center">Haqingiz: <b style="color:#fff">${som(o.fee)}</b></span></div>`;
 }
 setInterval(() => { const t = $('#nstimer'); if (!t) return; const l = Math.max(0, new Date(t.dataset.at) - Date.now()); t.textContent = `${String(Math.floor(l / 60000)).padStart(2, '0')}:${String(Math.floor((l % 60000) / 1000)).padStart(2, '0')}`; }, 1000);
 
-async function viewHistory(a) {
+// ---------- Daromad ----------
+async function viewHistory() {
   const me = S.st.me;
-  a.innerHTML = head('Hisob') + '<div class="empty">Yuklanmoqda…</div>' + tabs();
+  screen(`${title('Daromad')}<p class="mut">Yuklanmoqda…</p>`);
   const [h, ds] = await Promise.all([api('GET', '/api/k/history').catch(() => ({ orders: [], moves: [] })), api('GET', '/api/k/disputes').catch(() => [])]);
-  const TN = { fee: "Yetkazish haqi", bonus: 'Bonus', cash: 'Naqd olindi', cash_in: 'Naqd topshirildi', payout: "Sizga to'landi", penalty: 'Jarima', deposit: 'Depozit', note: 'Izoh' };
+  if (S.tab !== 'history') return;
+  const TN = { fee: 'Yetkazish haqi', bonus: 'Bonus', cash: 'Naqd olindi', cash_in: 'Naqd topshirildi', payout: "Sizga to'landi", penalty: 'Jarima', deposit: 'Depozit', note: 'Izoh' };
+  // Oxirgi 7 kun daromadi (haq + bonus) — hisob harakatlaridan
+  const days = [...Array(7)].map((_, i) => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - 6 + i); return d; });
+  const DN = ['Ya', 'Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh'];
+  const sum = days.map((d) => h.moves.filter((m) => ['fee', 'bonus'].includes(m.type) && new Date(m.at) >= d && new Date(m.at) < new Date(+d + 864e5)).reduce((t, m) => t + m.amount, 0));
+  const max = Math.max(1, ...sum), week = sum.reduce((t, v) => t + v, 0);
+  const wk = h.orders.filter((o) => new Date(o.delivered_at || o.updated_at) >= days[0]).length;
   const PARTY = { customer: 'Mijoz', restaurant: 'Restoran', courier: 'Siz', platform: 'Platforma', none: 'hech kim' };
   const DST = { open: ["Ko'rib chiqilmoqda", 'warn'], resolved: ['Hal qilindi', 'ok'], rejected: ['Rad etildi', ''] };
   const MEAS = { warn: 'ogohlantirish', fine: 'jarima', block: 'blok', unblock: 'blokdan chiqarildi' };
-  const disputes = `<div class="panel"><h3>Shikoyat va nizolar</h3>${ds.map((d) => `<div class="line" style="align-items:flex-start"><div class="grow">
-      <div><b>#${d.id}</b> ${d.order_id ? `· buyurtma #${d.order_id} ` : ''}· ${PARTY[d.opened_by]}${d.against ? ' → ' + PARTY[d.against] : ''} <span class="chip ${DST[d.status]?.[1] || ''}">${d.appeal_status === 'open' ? "E'tiroz ko'rilmoqda" : DST[d.status]?.[0] || d.status}</span></div>
-      <div class="muted small">${esc(d.category_name)}: ${esc(d.text)}</div>
-      ${d.status !== 'open' ? `<div class="small">Qaror: aybdor — ${PARTY[d.guilty] || '—'}${d.measure ? `, ${MEAS[d.measure]}` : ''}${d.recover && d.appeal_status !== 'accepted' ? `, undirildi ${som(d.recover)}` : ''}. ${esc(d.resolution)}${d.guilty !== 'courier' ? '' : d.appeal_status === 'accepted' ? " <b>E'tirozingiz qabul qilindi.</b>" : d.appeal_status === 'rejected' ? " E'tiroz rad etildi." : ''}</div>` : ''}
-      <div class="row" style="gap:6px;margin-top:6px">${d.status === 'open' || d.appeal_status === 'open' ? `<button class="btn sm" data-a="dNote" data-id="${d.id}">Javob yozish</button>` : ''}${d.can_appeal ? `<button class="btn sm primary" data-a="dAppeal" data-id="${d.id}">E'tiroz bildirish</button>` : ''}</div>
-    </div></div>`).join('') || '<div class="muted small">Nizo yo\'q</div>'}
-    ${h.orders.length ? `<details style="margin-top:10px"><summary class="small">⚠️ Muammo bildirish (restoran yoki mijoz)</summary>
-      <select id="dOrder">${h.orders.map((o) => `<option value="${o.id}">#${o.id} · ${esc(o.place || '')}</option>`).join('')}</select>
-      <select id="dAgainst"><option value="restaurant">Restoranga</option><option value="customer">Mijozga</option></select>
-      <select id="dCat"><option value="restaurant_delay">Restoran kechiktirdi</option><option value="damaged">Paket ochiq / shikastlangan edi</option><option value="customer_abuse">Mijoz bilan muammo</option><option value="payment">To'lov / naqd muammosi</option><option value="other">Boshqa</option></select>
-      <textarea id="dText" rows="2" maxlength="1000" placeholder="Nima bo'ldi?"></textarea><button class="btn sm primary block" data-a="dOpen">Yuborish</button></details>` : ''}</div>`;
-  a.innerHTML = head('Hisob') + `<div class="csec"><div class="kstats">
-    <div class="stat"><div class="muted small">Platforma sizga qarzdor</div><div class="v">${som(Math.max(0, me.balance))}</div></div>
-    <div class="stat"><div class="muted small">Siz topshirasiz</div><div class="v" style="color:var(--warn)">${som(Math.max(0, -me.balance))}</div></div></div>
-    <p class="muted small">Naqdni har kuni (24 soat ichida) topshiring. Daromad hisob-kitobda to'lanadi.</p>
-    ${disputes}
-    <div class="panel"><h3>Harakatlar</h3>${h.moves.map((m) => `<div class="line"><div class="grow"><div>${TN[m.type] || m.type}${m.order_id ? ` · #${m.order_id}` : ''}</div><div class="muted small">${dt(m.at)} ${esc(m.note)}</div></div><b class="num" style="color:${m.amount < 0 ? 'var(--warn)' : 'var(--accent)'}">${m.amount > 0 ? '+' : ''}${money(m.amount)}</b></div>`).join('') || '<div class="muted">—</div>'}</div>
-    <div class="panel"><h3>Buyurtmalar</h3>${h.orders.map((o) => `<div class="line"><div class="grow"><div>#${o.id} · ${esc(o.place || '')}</div><div class="muted small">${dt(o.delivered_at || o.updated_at)} · ${o.status === 'delivered' ? 'yetkazildi' : 'mijoz olmadi'}${o.courier_rating ? ` · ⭐${o.courier_rating}` : ''}</div></div><b class="num">${money(o.courier_fee)}</b></div>`).join('') || '<div class="muted">—</div>'}</div>
-    <button class="btn block" data-a="logout">Chiqish</button>${legalFooter()}</div>${tabs()}`;
+  screen(`${title('Daromad')}<div class="gap stagger">
+    <div class="card col" style="gap:16px"><div class="row sb" style="align-items:flex-end"><span class="col" style="gap:2px"><span class="mut sm" style="font-weight:600">Oxirgi 7 kun</span>
+      <b style="font-size:30px;letter-spacing:-.6px">${som(week)}</b></span><span class="mut sm">${wk} ta buyurtma</span></div>
+      <div class="bars">${sum.map((v, i) => `<span><i class="${v ? '' : 'z'}" style="height:${Math.max(4, Math.round((v / max) * 120))}px;animation-delay:${i * 50}ms" title="${som(v)}"></i>${i === 6 ? 'Bugun' : DN[days[i].getDay()]}</span>`).join('')}</div></div>
+    <div class="stats3"><span><b>${me.completed}</b><span class="mut xs">Yetkazilgan</span></span><span><b>${me.ratings ? '★ ' + me.rating.toFixed(1) : '—'}</b><span class="mut xs">Reyting</span></span>
+      <span><b>${money(me.earnedToday)}</b><span class="mut xs">Bugun</span></span></div>
+    <div class="stats2"><span><span class="mut xs">Platforma sizga qarzdor</span><b style="color:var(--ok-hi)">${som(Math.max(0, me.balance))}</b></span>
+      <span><span class="mut xs">Siz topshirasiz</span><b style="color:var(--warn-hi)">${som(Math.max(0, -me.balance))}</b></span></div>
+    <p class="mut xs" style="margin:0 4px">Naqdni har kuni (24 soat ichida) topshiring. Daromad hisob-kitobda to'lanadi.</p>
+    <div class="label">Harakatlar</div><div class="card list" style="padding:0 16px">${h.moves.slice(0, 40).map((m) => `<div class="li"><span class="ib">${ic({ deposit: 'wallet', payout: 'wallet', cash: 'banknote', cash_in: 'banknote', penalty: 'info', bonus: 'gift' }[m.type] || 'package', 18)}</span>
+      <span class="t"><b>${TN[m.type] || m.type}${m.order_id ? ` · #${m.order_id}` : ''}</b><span>${dt(m.at)} ${esc(m.note)}</span></span><b class="num" style="color:${m.amount < 0 ? 'var(--warn-hi)' : 'var(--ok-hi)'}">${m.amount > 0 ? '+' : ''}${money(m.amount)}</b></div>`).join('') || '<div class="li mut">Hali harakat yo\'q</div>'}</div>
+    <div class="label">Buyurtmalar</div><div class="card list" style="padding:0 16px">${h.orders.map((o) => `<div class="li"><span class="t"><b>#${o.id} · ${esc(o.place || '')}</b>
+      <span>${dt(o.delivered_at || o.updated_at)} · ${o.status === 'delivered' ? 'yetkazildi' : 'mijoz olmadi'}${o.courier_rating ? ` · ★${o.courier_rating}` : ''}</span></span><b class="num">${money(o.courier_fee)}</b></div>`).join('') || '<div class="li mut">Hali buyurtma yo\'q</div>'}</div>
+    <div class="label">Shikoyat va nizolar</div><div class="card list" style="padding:0 16px">${ds.map((d) => `<div class="li" style="align-items:flex-start"><span class="t" style="gap:4px">
+      <b>#${d.id}${d.order_id ? ` · buyurtma #${d.order_id}` : ''} · ${PARTY[d.opened_by]}${d.against ? ' → ' + PARTY[d.against] : ''}</b>
+      <span>${esc(d.category_name)}: ${esc(d.text)}</span>
+      ${d.status !== 'open' ? `<span style="color:#D4D4D8">Qaror: aybdor — ${PARTY[d.guilty] || '—'}${d.measure ? `, ${MEAS[d.measure]}` : ''}${d.recover && d.appeal_status !== 'accepted' ? `, undirildi ${som(d.recover)}` : ''}. ${esc(d.resolution)}${d.guilty !== 'courier' ? '' : d.appeal_status === 'accepted' ? " E'tirozingiz qabul qilindi." : d.appeal_status === 'rejected' ? " E'tiroz rad etildi." : ''}</span>` : ''}
+      <span class="row" style="gap:6px;margin-top:4px"><span class="pill ${DST[d.status]?.[1] || ''}">${d.appeal_status === 'open' ? "E'tiroz ko'rilmoqda" : DST[d.status]?.[0] || d.status}</span>
+        ${d.status === 'open' || d.appeal_status === 'open' ? `<button class="btn sm sec" data-a="dNote" data-id="${d.id}">Javob</button>` : ''}${d.can_appeal ? `<button class="btn sm" data-a="dAppeal" data-id="${d.id}">E'tiroz</button>` : ''}</span></span></div>`).join('') || '<div class="li mut">Nizo yo\'q</div>'}</div>
+    ${h.orders.length ? `<details class="card"><summary>Muammo bildirish (restoran yoki mijoz)</summary><div class="col" style="gap:10px;margin-top:10px">
+      <select id="dOrder" class="inp">${h.orders.map((o) => `<option value="${o.id}">#${o.id} · ${esc(o.place || '')}</option>`).join('')}</select>
+      <select id="dAgainst" class="inp"><option value="restaurant">Restoranga</option><option value="customer">Mijozga</option></select>
+      <select id="dCat" class="inp"><option value="restaurant_delay">Restoran kechiktirdi</option><option value="damaged">Paket ochiq / shikastlangan edi</option><option value="customer_abuse">Mijoz bilan muammo</option><option value="payment">To'lov / naqd muammosi</option><option value="other">Boshqa</option></select>
+      <textarea id="dText" class="inp" rows="2" maxlength="1000" placeholder="Nima bo'ldi?"></textarea><button class="btn" data-a="dOpen">Yuborish</button></div></details>` : ''}</div>`);
 }
-function viewRules(a) {
-  a.innerHTML = head('Qoidalar') + `<div class="csec"><div class="panel small">
-    <p><b>Olish:</b> faqat yopiq (plombali) paketni oling va rasmini ilovada oling.</p>
-    <p><b>Topshirish:</b> mijozdan 4 xonali kodni so'rang. Kodsiz bermang.</p>
-    <p><b>Mijoz chiqmasa:</b> qo'ng'iroq qiling, eshik rasmini oling, 10 daqiqa kuting, keyin "Mijoz olmadi". Yo'l haqingiz to'lanadi, taom sizda qoladi.</p>
-    <p><b>Naqd:</b> olgan naqdni 24 soat ichida topshiring. Qo'lingizdagi naqd limitdan oshmaydi (depozit va darajaga bog'liq).</p>
-    <p><b>Reyting:</b> 4.5 dan past — ogohlantirish, 4.0 dan past — blok. E'tiroz huquqingiz bor.</p>
-    <p><b>Darajalar:</b> Yangi → Bronza (20 ta, 4.5+) → Kumush (100 ta, 4.7+) → Oltin (300 ta, 4.85+). Har darajada bonus va naqd limiti oshadi.</p>
-    <p><b>Voz kechish:</b> faqat restorandan olishdan oldin mumkin va hisobga olinadi.</p></div></div>${tabs()}`;
+
+// ---------- Profil ----------
+function viewProfile() {
+  const me = S.st.me;
+  const vehicle = (VEH.find((v) => v[0] === me.vehicle) || [, me.vehicle || '—'])[1];
+  const RULES = [['package', 'Olish', 'Faqat yopiq (plombali) paketni oling va rasmini ilovada oling.'], ['shield-check', 'Topshirish', "Mijozdan 4 xonali kodni so'rang. Kodsiz bermang."],
+    ['timer', 'Mijoz chiqmasa', "Qo'ng'iroq, eshik rasmi, 10 daqiqa kutish — keyin «Mijoz olmadi». Yo'l haqingiz to'lanadi."], ['banknote', 'Naqd', "Olgan naqdni 24 soat ichida topshiring. Limit depozit va darajaga bog'liq."],
+    ['star', 'Reyting', "4.5 dan past — ogohlantirish, 4.0 dan past — blok. E'tiroz huquqingiz bor."], ['award', 'Darajalar', 'Yangi → Bronza (20, 4.5+) → Kumush (100, 4.7+) → Oltin (300, 4.85+). Bonus va limit oshadi.'],
+    ['route', 'Voz kechish', 'Faqat restorandan olishdan oldin mumkin va hisobga olinadi.']];
+  screen(`${title('Profil')}<div class="gap stagger">
+    <div class="card col" style="gap:14px"><div class="row" style="gap:14px"><span class="ava lg">${esc(initials(me.name))}${me.myid_verified ? `<span class="ok">${ic('check', 11, { w: 4 })}</span>` : ''}</span>
+      <span class="col" style="gap:3px"><b style="font-size:18px">${esc(me.name || 'Kuryer')}</b><span class="sm" style="color:${me.status === 'active' ? 'var(--ok-hi)' : 'var(--warn-hi)'};font-weight:600">${me.status === 'active' ? 'Tasdiqlangan kuryer' : 'Sinov davri'} · ID ${me.id}</span>
+        <span class="mut xs">${fmtPhone(me.phone)}</span></span></div>
+      <div class="stats3"><span><b>${me.ratings ? '★ ' + me.rating.toFixed(1) : '—'}</b><span class="mut xs">Reyting</span></span><span><b>${me.completed}</b><span class="mut xs">Yetkazish</span></span>
+        <span><b style="color:var(--acc-hi)">${esc(me.level)}</b><span class="mut xs">Daraja</span></span></div></div>
+    <div class="card list" style="padding:0 16px">
+      <div class="li"><span class="ib">${ic('id-card', 18)}</span><span class="t"><b>Shaxs (MyID)</b><span>${me.myid_verified ? 'Tasdiqlangan' : 'Platforma tekshiradi'}</span></span><span class="pill ${me.myid_verified ? 'ok' : 'warn'}">${me.myid_verified ? 'Tasdiqlangan' : 'Kutilmoqda'}</span></div>
+      ${DOCS.filter(([k]) => me.docs.includes(k)).map(([, n, i]) => `<div class="li"><span class="ib">${ic(i, 18)}</span><span class="t"><b>${n.replace(' (ixtiyoriy)', '')}</b><span>Yuklangan</span></span><span class="pill ok">✓</span></div>`).join('')}
+      <div class="li"><span class="ib">${ic('bike', 18)}</span><span class="t"><b>Transport</b><span>${esc(vehicle)}${me.vehicle_no ? ' · ' + esc(me.vehicle_no) : ''}</span></span></div></div>
+    <div class="label">Qoidalar</div><div class="card list" style="padding:0 16px">${RULES.map(([i, h, p]) => `<div class="li" style="align-items:flex-start"><span class="ib">${ic(i, 18)}</span><span class="t"><b>${h}</b><span style="color:#D4D4D8;font-size:13px">${p}</span></span></div>`).join('')}</div>
+    <div class="card list" style="padding:0 16px">
+      <a class="li press" href="${esc(DX.asset('/legal/privacy'))}" target="_blank" rel="noopener" style="color:#fff"><span class="ib">${ic('shield-check', 18)}</span><b class="grow" style="font-weight:600">Maxfiylik siyosati</b>${ic('chevron-right', 18, { c: '#52525B' })}</a>
+      <a class="li press" href="${esc(DX.asset('/legal/terms'))}" target="_blank" rel="noopener" style="color:#fff"><span class="ib">${ic('book-open', 18)}</span><b class="grow" style="font-weight:600">Foydalanish shartlari</b>${ic('chevron-right', 18, { c: '#52525B' })}</a>
+      <button class="li press" data-a="logout" style="color:var(--bad-hi)"><span class="ib" style="color:var(--bad-hi)">${ic('log-out', 18)}</span><b class="grow" style="font-weight:600">Chiqish</b></button></div>
+    <details class="card"><summary>Akkauntni o'chirish</summary><div class="col" style="gap:10px;margin-top:10px">
+      <span class="mut sm">Ism, telefon, hujjat rasmlari va joylashuv o'chiriladi. Hisobingizda naqd, daromad yoki depozit qolgan bo'lsa — so'rov qabul qilinadi va platforma hisob-kitobdan keyin o'chiradi. ${legalLink('delete', 'Batafsil')}</span>
+      <button class="btn sec" data-a="delOtp">SMS kod olish</button>
+      <div id="ds2" hidden><input id="dcode" class="inp otp" inputmode="numeric" maxlength="5" placeholder="SMS kod">
+        <button class="btn bad" style="margin-top:10px" data-a="delConfirm">Akkauntni o'chirish</button><div id="ddev" class="devcode"></div></div></div></details></div>`);
 }
 
 // ---------- Harakatlar ----------
+const radioOn = (el) => el.parentElement.querySelectorAll(`[data-a="${el.dataset.a}"]`).forEach((b) => b.classList.toggle('on', b === el));
 const A = {
   otp: async (el) => {
     const phone = $('#ph').value; el.disabled = true;
     const r = await run(() => api('POST', '/api/k/otp', { phone }));
     if (!r) { el.disabled = false; return; }
     setTimeout(() => { el.disabled = false; }, 60000);
-    store.set('dx_kphone', phone); $('#s2').hidden = false; if (r.dev_code) $('#dev').textContent = `Sinov rejimi: kod — ${r.dev_code}`; $('#code').focus();
+    store.set('dx_kphone', phone); $('#s2').hidden = false; el.className = 'btn sec'; el.textContent = 'Kodni qayta olish (1 daqiqadan keyin)';
+    if (r.dev_code) $('#dev').textContent = `Sinov rejimi: kod — ${r.dev_code}`; $('#code').focus();
   },
   login: async () => {
     const r = await run(() => api('POST', '/api/k/login', { phone: $('#ph').value, code: $('#code').value }));
@@ -277,9 +325,9 @@ const A = {
     if (!r) return;
     toast(r.message); S.token = null; S.st = null; store.set('dx_ktoken', null); stopGeo(); render();
   },
-  logout: async () => { await api('POST', '/api/k/logout').catch(() => {}); S.token = null; S.st = null; store.set('dx_ktoken', null); stopGeo(); render(); },
-  tab: (el) => { S.tab = el.dataset.v; render(); },
-  veh: (el) => { S.veh = el.dataset.v; document.querySelectorAll('[data-a="veh"]').forEach((b) => b.classList.toggle('on', b === el)); $('#vnb').hidden = !['moto', 'avto'].includes(S.veh); },
+  logout: async () => { if (!confirm('Akkauntdan chiqamizmi?')) return; await api('POST', '/api/k/logout').catch(() => {}); S.token = null; S.st = null; store.set('dx_ktoken', null); stopGeo(); render(); },
+  tab: (el) => { S.tab = el.dataset.v; window.scrollTo(0, 0); render(); },
+  veh: (el) => { S.veh = el.dataset.v; radioOn(el); $('#vnb').hidden = !['moto', 'avto'].includes(S.veh); },
   saveProfile: async () => {
     const r = await run(() => api('POST', '/api/k/profile', { name: $('#nm').value, vehicle: S.veh || S.st.me.vehicle, vehicle_no: $('#vno')?.value }));
     if (r) { S.st.me = r; S.regStep = 2; render(); }
@@ -290,7 +338,7 @@ const A = {
     const r = await run(() => api('POST', '/api/k/docs', { kind: el.dataset.v, data: d }));
     if (r) { S.st.me = r; toast('Yuklandi'); render(); }
   },
-  ans: (el) => { S.answers[Number(el.dataset.q)] = Number(el.dataset.v); el.parentElement.querySelectorAll('.opt').forEach((b) => b.classList.toggle('on', b === el)); },
+  ans: (el) => { S.answers[Number(el.dataset.q)] = Number(el.dataset.v); radioOn(el); },
   sendTest: async () => {
     if (S.answers.filter((x) => x != null).length < S.test.length) return toast('Hamma savolga javob bering', true);
     const r = await run(() => api('POST', '/api/k/test', { answers: S.answers }));
@@ -326,7 +374,7 @@ const A = {
     $('#kcode') && ($('#kcode').value = ''); refresh();
   },
   noshow: async (el) => {
-    if (!confirm("Mijoz buyurtmani olmadi deb belgilaymizmi? Taom sizda qoladi.")) return;
+    if (!confirm('Mijoz buyurtmani olmadi deb belgilaymizmi? Taom sizda qoladi.')) return;
     const r = await run(() => api('POST', `/api/k/orders/${el.dataset.id}/noshow`));
     if (r) toast(`Belgilandi. Yo'l haqingiz +${som(r.fee)}`); refresh();
   },
@@ -334,7 +382,7 @@ const A = {
   dNote: async (el) => { const text = prompt('Javobingiz (isbot, tushuntirish):'); if (text && (await run(() => api('POST', `/api/k/disputes/${el.dataset.id}/note`, { text })))) { toast('Yuborildi'); render(); } },
   dAppeal: async (el) => { const text = prompt("E'tirozingizni yozing (faqat bir marta):"); if (text && (await run(() => api('POST', `/api/k/disputes/${el.dataset.id}/appeal`, { text })))) { toast("E'tiroz yuborildi"); render(); } },
   dOpen: async () => {
-    const text = $('#dText').value.trim(); if (text.length < 3) return toast("Muammoni yozing", true);
+    const text = $('#dText').value.trim(); if (text.length < 3) return toast('Muammoni yozing', true);
     if (await run(() => api('POST', '/api/k/disputes', { order_id: Number($('#dOrder').value), against: $('#dAgainst').value, category: $('#dCat').value, text }))) { toast('Yuborildi'); render(); }
   },
   blockAppeal: async () => {

@@ -48,7 +48,7 @@ async def main():
         await pp.screenshot(path=f"{OUT}/11-p-courier-modal.png"); await pp.click('[data-act="approve"]'); await pp.wait_for_selector('.chip.info:has-text("Sinov")')
         await pp.screenshot(path=f"{OUT}/12-p-approved.png")
         # Kuryer: liniyaga
-        await k.reload(); await k.wait_for_selector('.online'); await k.click('.online'); await k.wait_for_selector('.online.on')
+        await k.reload(); await k.wait_for_selector('[data-a="online"]'); await k.click('[data-a="online"]'); await k.wait_for_selector('[data-a="online"].on')
         await k.wait_for_timeout(11000)  # GPS yuborilishi
         await k.screenshot(path=f"{OUT}/05-k-online.png")
         # Mijoz buyurtmasi
@@ -77,7 +77,7 @@ async def main():
         await photo(k,'[data-a="pickup"]',(160,120,80)); await k.wait_for_selector('[data-v="arrived"]'); await k.screenshot(path=f"{OUT}/09-k-onway.png")
         await k.click('[data-v="arrived"]'); await k.wait_for_selector('details'); await k.click('details summary'); await k.screenshot(path=f"{OUT}/13-k-at-customer.png", full_page=True)
         code=call("GET",f"/api/c/orders/{oid}",None,cu)["handover_code"]
-        await k.fill('#kcode',code); await k.click('[data-a="deliver"]'); await k.wait_for_selector('.online'); await k.wait_for_timeout(800)
+        await k.fill('#kcode',code); await k.click('[data-a="deliver"]'); await k.wait_for_selector('[data-a="online"]'); await k.wait_for_timeout(800)
         await k.screenshot(path=f"{OUT}/14-k-done.png")
         await m.wait_for_selector('.stars', timeout=9000); await m.click('[data-a="star"][data-v="5"]'); await m.screenshot(path=f"{OUT}/31-c-rate.png", full_page=True)
         await m.click('[data-a="rate"]'); await m.wait_for_timeout(800)
