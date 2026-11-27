@@ -3,7 +3,7 @@ from playwright.async_api import async_playwright
 BASE = "http://localhost:8080"; OUT = __import__("os").path.join(__import__("os").path.dirname(__import__("os").path.abspath(__file__)), "shots4"); __import__("os").makedirs(OUT, exist_ok=True); errors = []
 async def pin(page, code):
     for d in code: await page.click(f'.pad button[data-k="{d}"]')
-    await page.wait_for_selector("header.top", timeout=5000)
+    await page.wait_for_selector("aside.side", timeout=5000)
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path=__import__("os").environ.get("CHROME","/usr/bin/google-chrome"), args=["--no-sandbox"])
@@ -22,7 +22,7 @@ async def main():
         await pg.click('[data-p="toPos"]'); await pg.wait_for_selector(".pad")
         await pg.screenshot(path=f"{OUT}/03-pin-bizname.png")
         await pin(pg, "1234")
-        await pg.click('nav.tabs button[data-v="admin"]'); await pg.click('[data-v="settings"]'); await pg.wait_for_selector('#s-name')
+        await pg.click('nav.snav button[data-v="admin"]'); await pg.click('[data-v="settings"]'); await pg.wait_for_selector('#s-name')
         await pg.screenshot(path=f"{OUT}/04-settings-code.png")
         # Ega kabineti
         await pg.goto(BASE + "/#owner"); await pg.wait_for_selector("#o-phone")
@@ -52,7 +52,7 @@ async def main():
         code1 = [x for x in lst if x["id"] == 1][0]["code"]
         for d in code1: await p2.click(f'.pad button[data-k="{d}"]')
         await p2.wait_for_timeout(500); await pin(p2, "2222")
-        await p2.click('nav.tabs button[data-v="cash"]'); await p2.wait_for_timeout(300)
+        await p2.click('nav.snav button[data-v="cash"]'); await p2.wait_for_timeout(300)
         if await p2.query_selector('[data-a="openShift"]'): await p2.click('[data-a="openShift"]')
         await p2.wait_for_timeout(500)
         await p2.screenshot(path=f"{OUT}/07-expired-banner.png")

@@ -8,7 +8,7 @@ errors = []
 async def pin(page, code):
     for d in code:
         await page.click(f'button[data-k="{d}"]')
-    await page.wait_for_selector("header.top", timeout=5000)
+    await page.wait_for_selector("aside.side", timeout=5000)
 
 async def main():
     async with async_playwright() as p:
@@ -25,7 +25,7 @@ async def main():
         await page.fill("#open-cash", "200000")
         await page.click('[data-a="openShift"]')
         await page.wait_for_timeout(400)
-        await page.click('nav.tabs button[data-v="floor"]')
+        await page.click('nav.snav button[data-v="floor"]')
         await page.click('.table >> nth=0')
         await page.click('.modal [data-v="3"]')
         await page.wait_for_selector("#products .product")
@@ -65,7 +65,7 @@ async def main():
         # Kassirda real-time "tayyor" ko'rinishi kerak
         await page.wait_for_timeout(600)
         await page.screenshot(path=f"{OUT}/06-order-ready-realtime.png")
-        await page.click('nav.tabs button[data-v="floor"]')
+        await page.click('nav.snav button[data-v="floor"]')
         await page.wait_for_timeout(300)
         await page.screenshot(path=f"{OUT}/07-floor.png")
         await page.click('.table >> nth=0')
@@ -78,7 +78,7 @@ async def main():
         await page.wait_for_selector('.modal h2:has-text("qabul qilindi")')
         await page.screenshot(path=f"{OUT}/09-paid.png")
         await page.click('.modal [data-m="close"]')
-        await page.click('nav.tabs button[data-v="cash"]')
+        await page.click('nav.snav button[data-v="cash"]')
         await page.wait_for_selector(".grid-stats")
         await page.screenshot(path=f"{OUT}/10-cash.png", full_page=True)
 
@@ -89,7 +89,7 @@ async def main():
         adm.on("pageerror", lambda e: errors.append("admin pageerror: " + str(e)))
         await adm.goto(BASE)
         await pin(adm, "1111")
-        await adm.click('nav.tabs button[data-v="admin"]')
+        await adm.click('nav.snav button[data-v="admin"]')
         await adm.wait_for_selector("table.list")
         await adm.screenshot(path=f"{OUT}/11-admin-menu.png")
         await adm.click('[data-a="aedit"] >> nth=1')

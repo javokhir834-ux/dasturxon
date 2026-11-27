@@ -31,8 +31,8 @@ async function loadDlv(notify) {
   S.dlv = list; S.dlvNew = list.filter((o) => o.status === 'new').length;
   const fresh = list.filter((o) => o.status === 'new' && !before.has(o.id));
   if (notify && fresh.length) { beep(); fresh.forEach((o) => toast(`🛵 Yangi buyurtma D-${o.id} · ${som(o.total)}`)); }
-  const tab = document.querySelector('nav.tabs [data-v="delivery"]');
-  if (tab) tab.innerHTML = `🛵 Yetkazish${S.dlvNew ? ` <span class="nbadge">${S.dlvNew}</span>` : ''}`;
+  const tab = document.querySelector('nav.snav [data-v="delivery"]');
+  if (tab) tab.innerHTML = `${ic('clipboard-list', 20)}<span>Buyurtmalar${S.dlvNew ? ` <span class="nbadge">${S.dlvNew}</span>` : ''}</span>`;
 }
 setInterval(() => { if (S.dlvNew && S.user && dlvOn()) beep(); }, 30000); // qabul qilinmaguncha har 30 soniyada eslatadi
 
@@ -97,7 +97,7 @@ async function viewDelivery(main) {
   main.innerHTML = `${pend.length ? `<div class="banner warn" style="margin:-16px -16px 14px">Kuryer yetkazgan, lekin chek yopilmagan (smena yopiq edi): ${pend.map((o) => `D-${o.id} <button class="btn sm" data-a="dClosePos" data-id="${o.id}">Chekni yopish</button>`).join(' ')}</div>` : ''}${!S.boot.shift ? '<div class="banner warn" style="margin:-16px -16px 14px">Smena yopiq — buyurtmani qabul qilish uchun Kassa bo\'limida smenani oching.</div>' : ''}
     ${['expired', 'blocked'].includes(sub.status) ? '<div class="banner danger" style="margin:-16px -16px 14px">Yetkazib berish obunasi faol emas — ilovada ko\'rinmaysiz.</div>' : ''}
     <div class="row" style="margin-bottom:12px"><div class="grow"></div><button class="btn sm" data-a="dDeals">🌙 Kechki chegirmalar</button></div>
-    <div class="dboard">${cols.map(([k, n]) => { const l = S.dlv.filter((o) => o.status === k); return `<section class="dcol"><h3>${n} <span class="chip ${DST[k][1]}">${l.length}</span></h3>${l.map(dcard).join('') || '<div class="muted small dempty">—</div>'}</section>`; }).join('')}</div>
+    <div class="dboard">${cols.map(([k, n]) => { const l = S.dlv.filter((o) => o.status === k); return `<section class="dcol"><h3><i class="dot" style="background:${{ new: 'var(--accent)', accepted: '#F59E0B', ready: 'var(--ready)', on_way: '#8E8E93' }[k]}"></i>${n} <span class="chip">${l.length}</span></h3>${l.map(dcard).join('') || '<div class="muted small dempty">—</div>'}</section>`; }).join('')}</div>
     <div class="panel" style="margin-top:14px"><div class="row"><h3 style="margin:0">Bugun yakunlanganlar</h3><div class="grow"></div><span class="muted">Yetkazildi: <b>${done.filter((o) => o.status === 'delivered').length}</b> ta · ${som(sum)}</span></div>
       <table class="list" style="margin-top:8px"><tr><th>#</th><th>Vaqt</th><th>Mijoz</th><th>Holat</th><th>To'lov</th><th class="right">Summa</th></tr>
       ${done.map((o) => `<tr><td>D-${o.id}</td><td class="muted">${hhmm(o.created_at)}</td><td>${esc(o.name || '')} <span class="muted small">${fmtPhoneD(o.phone)}</span></td>

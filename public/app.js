@@ -86,7 +86,7 @@ async function renderLogin() {
   }
   const draw = () => {
     app.innerHTML = `<div class="login"><div class="login-box">
-      <div class="brand" style="justify-content:center"><span class="dot"></span>${esc(store.get('bizname') || 'FastHub Biznes')}</div>
+      <div class="sbrand"><span class="logo">${ic('zap', 20, { c: '#fff' })}</span><div style="text-align:left"><b>FastHub Biznes</b><small>${esc(store.get('bizname') || '')}</small></div></div>
       <h1 style="margin-top:18px">PIN kodni kiriting</h1>
       <div class="pin-dots">${[0, 1, 2, 3].map((i) => `<i class="${i < pin.length ? 'on' : ''}"></i>`).join('')}</div>
       <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-k="${n}">${n}</button>`).join('')}
@@ -193,36 +193,38 @@ async function connectStream() {
 }
 
 // ---------- Asosiy qobiq ----------
+// Yon menyu bo'limlari: [ko'rinish, nom, Lucide ikonka]
 function navItems() {
   const items = [];
-  if (can('admin', 'menejer', 'kassir', 'ofitsiant')) items.push(['floor', 'Zal']);
-  if (can('admin', 'menejer', 'oshpaz', 'kassir')) items.push(['kitchen', 'Oshxona']);
-  if (can(...CASHR)) items.push(['cash', 'Kassa']);
-  if (VIEWS.reservations && can('admin', 'menejer', 'kassir', 'ofitsiant')) items.push(['reservations', 'Bronlar']);
-  if (VIEWS.customers && can(...CASHR)) items.push(['customers', 'Mijozlar']);
-  if (can('admin', 'menejer', 'omborchi')) items.push(['stock', 'Ombor']);
-  if (VIEWS.counter && can(...CASHR)) items.push(['counter', '🛒 Tez sotuv']); // 9-etap: stolsiz kassa (do'kon, dorixona, olib ketish)
-  if (VIEWS.delivery && can(...CASHR) && S.boot.business.delivery && S.boot.business.delivery.status !== 'disabled') items.push(['delivery', `🛵 Yetkazish${S.dlvNew ? ` <span class="nbadge">${S.dlvNew}</span>` : ''}`]);
-  if (VIEWS.staff && can('admin', 'menejer')) items.push(['staff', 'Xodimlar']);
-  if (can('admin', 'menejer')) items.push(['reports', 'Hisobotlar']);
-  if (can('admin')) items.push(['admin', 'Boshqaruv']);
+  if (VIEWS.delivery && can(...CASHR) && S.boot.business.delivery && S.boot.business.delivery.status !== 'disabled') items.push(['delivery', `Buyurtmalar${S.dlvNew ? ` <span class="nbadge">${S.dlvNew}</span>` : ''}`, 'clipboard-list']);
+  if (can('admin', 'menejer', 'kassir', 'ofitsiant')) items.push(['floor', 'Zal', 'armchair']);
+  if (can('admin', 'menejer', 'oshpaz', 'kassir')) items.push(['kitchen', 'Oshxona', 'flame']);
+  if (VIEWS.counter && can(...CASHR)) items.push(['counter', 'Tez sotuv', 'shopping-basket']); // 9-etap: stolsiz kassa (do'kon, dorixona, olib ketish)
+  if (can(...CASHR)) items.push(['cash', 'Kassa', 'calculator']);
+  if (VIEWS.reservations && can('admin', 'menejer', 'kassir', 'ofitsiant')) items.push(['reservations', 'Bronlar', 'book-open']);
+  if (VIEWS.customers && can(...CASHR)) items.push(['customers', 'Mijozlar', 'users']);
+  if (can('admin', 'menejer', 'omborchi')) items.push(['stock', 'Ombor', 'package']);
+  if (VIEWS.staff && can('admin', 'menejer')) items.push(['staff', 'Xodimlar', 'id-card']);
+  if (can('admin', 'menejer')) items.push(['reports', 'Hisobot', 'chart-column']);
+  if (can('admin')) items.push(['admin', 'Boshqaruv', 'settings']);
   return items;
 }
+const initials = (n) => String(n || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 
 function render() {
   const sh = S.boot.shift;
-  $('#app').innerHTML = `<div class="shell">
-    <header class="top">
-      <div class="brand"><span class="dot"></span>${esc(S.boot.business.name)}</div>
-      <nav class="tabs">${navItems().map(([v, n]) => `<button data-a="nav" data-v="${v}" class="${S.view === v || (v === 'floor' && S.view === 'order') ? 'on' : ''}">${n}</button>`).join('')}</nav>
-      <span class="chip ${sh ? 'ok' : 'warn'}">${sh ? 'Smena · ' + hhmm(sh.opened_at) : 'Smena yopiq'}</span>
-      <span class="clock" id="clock"></span>
-      ${HOOKS.header ? HOOKS.header() : ''}
-      <span class="muted small who">${esc(S.user.name)} · ${ROLE_NAME[S.user.role]}</span>
-      <button class="btn sm" data-a="logout">Chiqish</button>
-    </header>
-    ${subBanner()}
-    <main id="main"></main></div>`;
+  $('#app').innerHTML = `<div class="shell sided">
+    <aside class="side">
+      <div class="sbrand"><span class="logo">${ic('zap', 20, { c: '#fff' })}</span><div><b>FastHub Biznes</b><small>${esc(S.boot.business.name)}</small></div></div>
+      <nav class="snav">${navItems().map(([v, n, i]) => `<button data-a="nav" data-v="${v}" class="${S.view === v || (v === 'floor' && S.view === 'order') ? 'on' : ''}">${ic(i, 20)}<span>${n}</span></button>`).join('')}</nav>
+      <div class="sfoot">
+        <div class="sstat"><span class="chip ${sh ? 'ok' : 'warn'}">${sh ? 'Smena · ' + hhmm(sh.opened_at) : 'Smena yopiq'}</span><span class="clock" id="clock"></span></div>
+        ${HOOKS.header ? HOOKS.header() : ''}
+        <div class="suser"><span class="av">${esc(initials(S.user.name))}</span><div><b>${esc(S.user.name)}</b><small>${ROLE_NAME[S.user.role]}</small></div>
+          <button data-a="logout" title="Chiqish" aria-label="Chiqish">${ic('log-out', 18)}</button></div>
+      </div>
+    </aside>
+    <div class="smain">${subBanner()}<main id="main"></main></div></div>`;
   $('#app').onclick = onAction;
   $('#app').oninput = onInput;
   renderView();

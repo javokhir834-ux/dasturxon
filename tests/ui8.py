@@ -38,7 +38,7 @@ async def main():
             await pos.fill("#srv", "127.0.0.1:8080"); await pos.click("#go")
             await pos.wait_for_selector(".pad")
             for d in "2222": await pos.click(f'.pad button[data-k="{d}"]')
-            await pos.wait_for_selector("header.top"); await pos.click('nav.tabs button[data-v="delivery"]'); await pos.wait_for_timeout(800)
+            await pos.wait_for_selector("aside.side"); await pos.click('nav.snav button[data-v="delivery"]'); await pos.wait_for_timeout(800)
             await pos.screenshot(path=f"{OUT}/02-biznes-pos.png")
             # ---- Mijoz ilovasi
             mc = await b.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, is_mobile=True, has_touch=True); await mc.add_init_script(FAKE)

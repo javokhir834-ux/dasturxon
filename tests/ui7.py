@@ -64,7 +64,7 @@ async def main():
         pos=await (await b.new_context(viewport={"width":1440,"height":900})).new_page(); watch(pos)
         await pos.goto(B);
         for d in "2222": await pos.click(f'.pad button[data-k="{d}"]')
-        await pos.wait_for_selector('header.top'); await pos.click('nav.tabs button[data-v="delivery"]'); await pos.wait_for_selector('.cline'); await pos.screenshot(path=f"{OUT}/20-pos-courier.png")
+        await pos.wait_for_selector('aside.side'); await pos.click('nav.snav button[data-v="delivery"]'); await pos.wait_for_selector('.cline'); await pos.screenshot(path=f"{OUT}/20-pos-courier.png")
         # Mijoz ekrani
         mc=await b.new_context(viewport={"width":390,"height":844}, device_scale_factor=2, is_mobile=True)
         m=await mc.new_page(); watch(m)

@@ -365,7 +365,13 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
   Eski "Qoidalar" tabi Profilga ko'chdi. `public/app/app.css` o'chirildi (endi ishlatilmaydi).
 - Poll (kuryer 3 s, buyurtma kuzatish 5 s) qayta chizganda paydo bo'lish animatsiyasi takrorlanmaydi (`.scr.still`); kuryerda ochiq "Mijoz chiqmayaptimi?" bo'limi yopilib qolmaydi.
 - Brauzer testlari `ui7/ui8.py`: `.online` → `[data-a="online"]`.
-- **Keyingi bosqichlar:** 3 — biznes paneli (yon menyu + kanban doska), 4 — xarita.
+- **3-bosqich — biznes paneli (tugadi):** POS, platforma va ega sahifalari umumiy `styles.css` tokenlari orqali prototipdagi yorug' palitraga o'tdi
+  (fon `#F2F2F7`, oq kartalar radius 20, aksent `#D43F05`, yangi `--ok/--*-soft` tokenlari). Yuqori menyu o'rniga **chap yon menyu** (`aside.side`, `nav.snav`):
+  logo, bo'limlar Lucide ikonkalari bilan (Buyurtmalar — yetkazish doskasi birinchi), pastda smena, "Ishga keldim", foydalanuvchi va chiqish; 900px dan tor ekranda
+  tepada gorizontal panel. Yetkazish doskasi va oshxona ekrani — kulrang ustunli kanban (rangli nuqta, oq kartalar). PIN ekrani yorug'.
+  Ekran kodi (app/office/staff/delivery/retail/platform) o'zgarmadi — faqat `app.js` sarlavhasi, `delivery.js` ustun sarlavhasi va platforma logotipi.
+  Brauzer testlari: `header.top` → `aside.side`, `nav.tabs` → `nav.snav` (POS).
+- **Keyingi bosqich:** 4 — xarita (mijoz kuzatuvi, kuryer marshruti; O'zbekistondagi tile server va CSP).
 
 ## 11-etap (taklif) — pilotdan keyin
 - Pilot fikrlari bo'yicha tuzatishlar; restoran o'z muqova rasmini yuklashi; promokodlar va referal; mijoz manzillar daftari.

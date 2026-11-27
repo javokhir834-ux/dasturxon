@@ -5,7 +5,7 @@ BASE = "http://localhost:8080"; OUT = __import__("os").path.join(__import__("os"
 
 async def pin(page, code):
     for d in code: await page.click(f'button[data-k="{d}"]')
-    await page.wait_for_selector("header.top", timeout=5000)
+    await page.wait_for_selector("aside.side", timeout=5000)
 
 async def main():
     async with async_playwright() as p:
@@ -16,8 +16,8 @@ async def main():
         pg.on("pageerror", lambda e: errors.append(str(e)))
         await pg.goto(BASE); await pin(pg, "2222")
         # sotuv: smena, buyurtma, yuborish, bekor qilish (hisobdan chiqarish bilan), to'lov
-        await pg.click('nav.tabs button[data-v="cash"]'); await pg.fill("#open-cash", "100000"); await pg.click('[data-a="openShift"]'); await pg.wait_for_timeout(300)
-        await pg.click('nav.tabs button[data-v="floor"]'); await pg.click('.table >> nth=0'); await pg.click('.modal [data-v="2"]')
+        await pg.click('nav.snav button[data-v="cash"]'); await pg.fill("#open-cash", "100000"); await pg.click('[data-a="openShift"]'); await pg.wait_for_timeout(300)
+        await pg.click('nav.snav button[data-v="floor"]'); await pg.click('.table >> nth=0'); await pg.click('.modal [data-v="2"]')
         await pg.wait_for_selector("#products .product")
         for i in [0, 0, 1]: await pg.click(f'#products .product >> nth={i}'); await pg.wait_for_timeout(120)
         await pg.click('[data-a="send"]'); await pg.wait_for_timeout(300)
@@ -34,7 +34,7 @@ async def main():
             await pin(pg, "1111")
         except Exception as e:
             await pg.screenshot(path=f"{OUT}/00-login-fail.png"); print("ERRS", errors); raise
-        await pg.click('nav.tabs button[data-v="stock"]'); await pg.wait_for_selector(".grid-stats")
+        await pg.click('nav.snav button[data-v="stock"]'); await pg.wait_for_selector(".grid-stats")
         await pg.screenshot(path=f"{OUT}/02-stock.png", full_page=True)
         # Kirim
         await pg.click('[data-a="newInvoice"]'); await pg.wait_for_selector('#lm-rows')
@@ -66,7 +66,7 @@ async def main():
         await pg.click('[data-v="moves"]'); await pg.wait_for_selector('table.list')
         await pg.screenshot(path=f"{OUT}/07-moves.png")
         # Hisobotlar
-        await pg.click('nav.tabs button[data-v="reports"]'); await pg.wait_for_selector('.chart')
+        await pg.click('nav.snav button[data-v="reports"]'); await pg.wait_for_selector('.chart')
         await pg.hover('.chart-col >> nth=-1')
         await pg.screenshot(path=f"{OUT}/08-reports.png", full_page=True)
         await b.close()

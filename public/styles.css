@@ -1,10 +1,11 @@
-/* ===== Dizayn tokenlari (umumiy, brendsiz) ===== */
+/* ===== Dizayn tokenlari — FastHub prototipi (yorug', iOS uslubi, to'q sariq aksent) ===== */
 :root {
-  --bg: #0f1714; --bg2: #16201c; --card: #1c2823; --card2: #233129; --line: #2e3d36;
-  --text: #eef3f0; --muted: #93a59c; --accent: #2fbf71; --accent-ink: #062814;
-  --warn: #f2b33d; --danger: #ef5b5b; --info: #4aa3df; --ready: #2fbf71;
-  --radius: 14px; --gap: 12px;
-  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --bg: #F2F2F7; --bg2: #FFFFFF; --card: #FFFFFF; --card2: #F2F2F7; --line: #E5E5EA;
+  --text: #111114; --muted: #6B6B73; --accent: #D43F05; --accent-ink: #FFFFFF; --accent-soft: #FFF1EA; --accent-dark: #B13404;
+  --ok: #15803D; --ok-soft: #E8F7EE; --warn: #B45309; --warn-soft: #FEF6E0; --danger: #D70015; --danger-soft: #FDECEE; --info: #2F7BF6; --info-soft: #EAF1FE; --ready: #16A34A;
+  --shadow: 0 1px 3px rgba(0, 0, 0, .06); --shadow-lg: 0 12px 40px rgba(0, 0, 0, .14);
+  --radius: 18px; --gap: 12px; --ios: cubic-bezier(.32, .72, 0, 1);
+  --font: -apple-system, "SF Pro Text", Inter, system-ui, "Segoe UI", Roboto, sans-serif;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 15px/1.4 var(--font); }
@@ -62,7 +63,7 @@ main { flex: 1; overflow: auto; padding: 16px; }
 .tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--gap); }
 .table { position: relative; min-height: 118px; border-radius: var(--radius); background: var(--card); border: 2px solid var(--line); padding: 12px; text-align: left; display: flex; flex-direction: column; gap: 4px; }
 .table .name { font-weight: 700; font-size: 17px; }
-.table.busy { border-color: var(--accent); background: linear-gradient(160deg, #1f3a2c, var(--card)); }
+.table.busy { border-color: var(--accent); background: linear-gradient(160deg, var(--accent-soft), var(--card) 70%); }
 .table.pre { border-color: var(--warn); }
 .table.foreign { opacity: .55; }
 .table .sum { margin-top: auto; font-weight: 700; font-size: 16px; }
@@ -91,7 +92,7 @@ main.flush { padding: 0; display: flex; overflow: hidden; }
 .t-items { flex: 1; overflow: auto; padding: 8px 10px; }
 .t-group { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin: 10px 4px 6px; }
 .item { display: flex; gap: 10px; align-items: center; padding: 9px 8px; border-radius: 10px; }
-.item:nth-child(even) { background: rgba(255,255,255,.02); }
+.item:nth-child(even) { background: var(--card2); }
 .item .i-name { font-weight: 600; } .item .i-sub { font-size: 12px; color: var(--muted); }
 .item.cancelled .i-name { text-decoration: line-through; color: var(--muted); }
 .qty { display: flex; align-items: center; gap: 4px; }
@@ -127,14 +128,14 @@ table.list tr.off td { opacity: .45; }
 .sub-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
 
 /* Modal */
-.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: grid; place-items: center; z-index: 50; padding: 16px; }
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: grid; place-items: center; z-index: 50; padding: 16px; }
 .modal { width: min(520px, 100%); max-height: 92vh; overflow: auto; background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
 .modal.wide { width: min(760px, 100%); }
 .modal h2 { margin: 0 0 12px; font-size: 20px; }
 .modal .foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
 .pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
 .pick button { padding: 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); text-align: left; }
-.pick button.on { border-color: var(--accent); background: #1f3a2c; }
+.pick button.on { border-color: var(--accent); background: var(--accent-soft); }
 .paygrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .bigtotal { font-size: 34px; font-weight: 800; text-align: center; margin: 4px 0 12px; }
 
@@ -181,7 +182,7 @@ table.list tr.off td { opacity: .45; }
 .chart-col { position: relative; flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; outline: none; cursor: default; }
 .chart-bar { width: min(70%, 26px); background: var(--accent); border-radius: 4px 4px 0 0; }
 .chart-col:hover .chart-bar, .chart-col:focus .chart-bar { filter: brightness(1.25); }
-.chart-col:hover, .chart-col:focus { background: rgba(255,255,255,.03); }
+.chart-col:hover, .chart-col:focus { background: rgba(0,0,0,.03); }
 .chart-col:hover::after, .chart-col:focus::after { content: attr(data-tip); position: absolute; top: -6px; left: 50%; transform: translate(-50%, -100%); white-space: nowrap;
   background: var(--card2); border: 1px solid var(--line); color: var(--text); padding: 6px 9px; border-radius: 8px; font-size: 12px; z-index: 5; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
 .chart-x { display: flex; gap: 2px; margin-left: 78px; margin-top: 4px; font-size: 11px; color: var(--muted); }
@@ -264,3 +265,89 @@ label.chk input { width: 20px; height: 20px; flex: none; }
 .note.ok { border-color: var(--accent); color: var(--accent); }
 .note.warn { border-color: var(--warn); color: var(--warn); }
 .note.danger { border-color: var(--danger); color: var(--danger); }
+
+/* ===== FastHub prototipi: komponentlar (yorug' tema ustidan) ===== */
+body { -webkit-font-smoothing: antialiased; }
+input, select, textarea { background: var(--card2); border: 1px solid transparent; border-radius: 12px; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 3px var(--accent-soft); }
+.btn { border-color: transparent; border-radius: 13px; font-weight: 700; transition: transform .22s var(--ios), background .2s; }
+.btn:active { transform: scale(.96); }
+.btn.primary { box-shadow: 0 4px 14px rgba(212, 63, 5, .22); }
+.btn.danger { background: var(--danger-soft); border-color: transparent; }
+.btn.warn { background: var(--warn-soft); border-color: transparent; }
+.btn.ghost { background: transparent; border-color: var(--line); }
+.chip { border: 0; background: var(--card2); }
+.chip.ok { color: var(--ok); background: var(--ok-soft); } .chip.warn { color: var(--warn); background: var(--warn-soft); }
+.chip.danger { color: var(--danger); background: var(--danger-soft); } .chip.info { color: var(--info); background: var(--info-soft); }
+.panel, .stat { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.panel h3 { font-size: 17px; letter-spacing: -.2px; }
+.stat .v { font-size: 24px; letter-spacing: -.5px; }
+table.list th { text-transform: uppercase; letter-spacing: .4px; font-size: 11.5px; }
+.modal { background: #fff; border: 0; border-radius: 24px; box-shadow: var(--shadow-lg); animation: fhPop .35s var(--ios); }
+.toast { background: rgba(20, 20, 24, .92); color: #fff; border: 0; border-left: 4px solid var(--accent); border-radius: 16px; box-shadow: var(--shadow-lg); font-weight: 600; }
+.toast.err { border-left-color: #FF6B6B; }
+.note { border-color: transparent; }
+.note.ok { border-color: transparent; background: var(--ok-soft); color: var(--ok); } .note.warn { border-color: transparent; background: var(--warn-soft); color: var(--warn); }
+.note.danger { border-color: transparent; background: var(--danger-soft); color: var(--danger); }
+.banner { border-bottom: 0; }
+.banner.info { background: var(--info-soft); } .banner.warn { background: var(--warn-soft); } .banner.danger { background: var(--danger-soft); }
+.chips button { background: #fff; border: 0; color: var(--text); box-shadow: var(--shadow); }
+.chips button.on { background: var(--text); color: #fff; }
+.table { border: 2px solid transparent; box-shadow: var(--shadow); border-radius: 20px; }
+.table.pre { border-color: var(--warn); }
+.product, .ctile { border: 0; box-shadow: var(--shadow); border-radius: 16px; }
+.cats button { background: #fff; box-shadow: var(--shadow); }
+.cats button.on { background: var(--accent-soft); outline: 0; }
+.ticket { background: #fff; border-left: 0; box-shadow: -1px 0 0 var(--line); }
+.qty button, .step { background: var(--card2); border: 0; }
+.kitem { background: var(--card2); }
+.pad button { background: #fff; border: 0; box-shadow: var(--shadow); }
+.pin-dots i { border-color: #C7C7CC; }
+.login .sbrand { justify-content: center; padding: 0; }
+@keyframes fhPop { from { opacity: 0; transform: translateY(10px) scale(.97); } }
+
+/* ---- Yon menyu (prototipdagi biznes paneli) ---- */
+.shell.sided { flex-direction: row; }
+aside.side { width: 232px; flex: 0 0 auto; background: #fff; border-right: .5px solid var(--line); padding: 20px 14px 14px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+.sbrand { display: flex; align-items: center; gap: 10px; padding: 0 8px 16px; }
+.sbrand .logo { width: 38px; height: 38px; border-radius: 11px; background: var(--accent); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.sbrand b { font-size: 16px; display: block; } .sbrand small { font-size: 12px; color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+nav.snav { display: flex; flex-direction: column; gap: 2px; }
+nav.snav button { height: 44px; padding: 0 12px; border-radius: 12px; display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; color: #3A3A40; text-align: left; white-space: nowrap; transition: background .2s; }
+nav.snav button:hover { background: var(--card2); }
+nav.snav button.on { background: var(--accent-soft); color: var(--accent-dark); }
+nav.snav .nbadge { margin-left: auto; background: var(--accent); animation: none; }
+.sfoot { margin-top: auto; padding-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.sfoot .btn { width: 100%; }
+.sstat { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px; }
+.suser { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--card2); }
+.suser .av { width: 36px; height: 36px; border-radius: 18px; background: var(--text); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex: 0 0 auto; }
+.suser b { font-size: 14px; display: block; } .suser small { font-size: 12px; color: var(--muted); }
+.suser button { margin-left: auto; color: var(--muted); padding: 6px; border-radius: 8px; } .suser button:hover { background: #fff; color: var(--danger); }
+.smain { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.smain main { padding: 22px 24px; }
+.smain main.flush { padding: 0; }
+@media (max-width: 900px) {
+  .shell.sided { flex-direction: column; }
+  aside.side { width: auto; flex-direction: row; align-items: center; padding: 8px 10px; border-right: 0; border-bottom: .5px solid var(--line); overflow-x: auto; gap: 6px; }
+  .sbrand { padding: 0 6px 0 0; } .sbrand > div, .suser > div, .sstat .clock { display: none; }
+  nav.snav { flex-direction: row; } nav.snav button { height: 38px; padding: 0 10px; font-size: 14px; }
+  .sfoot { margin: 0 0 0 auto; padding: 0; flex-direction: row; align-items: center; } .sfoot .btn { width: auto; }
+  .smain main { padding: 12px; }
+}
+
+/* ---- Yetkazish doskasi — kanban (prototip) ---- */
+.dboard { gap: 14px; align-items: stretch; }
+.dcol { background: #E9E9EF; border: 0; border-radius: 20px; padding: 12px; }
+.dcol h3 { margin: 2px 4px 12px; font-size: 15px; }
+.dcol h3 .chip { margin-left: auto; background: #fff; color: var(--text); }
+.dcol h3 i.dot { width: 9px; height: 9px; border-radius: 5px; display: inline-block; }
+.dcard { background: #fff; border: 0; border-radius: 16px; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); animation: fhPop .45s var(--ios) both; }
+.dcard.new { box-shadow: 0 0 0 2px var(--accent); }
+.ditems { border-top: .5px solid var(--line); border-bottom: .5px solid var(--line); color: #3A3A40; }
+.cline { background: var(--card2); }
+/* Oshxona ekrani (KDS) */
+.kcard { border: 0; border-top: 4px solid var(--info); box-shadow: var(--shadow); border-radius: 18px; }
+.kds .kcol { background: #E9E9EF; border-radius: 20px; padding: 12px; min-height: 160px; }
+.kds .kcol h3 { font-size: 15px; margin: 2px 4px 12px; }
+aside.side { scrollbar-width: none; } aside.side::-webkit-scrollbar { display: none; }

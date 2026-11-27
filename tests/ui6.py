@@ -13,7 +13,7 @@ def png():
     b=io.BytesIO(); im.save(b,"PNG"); return b.getvalue()
 async def pin(page, code):
     for d in code: await page.click(f'.pad button[data-k="{d}"]')
-    await page.wait_for_selector("header.top", timeout=5000)
+    await page.wait_for_selector("aside.side", timeout=5000)
 def watch(pg): pg.on("console", lambda m: m.type=="error" and errors.append(m.text)); pg.on("pageerror", lambda e: errors.append(str(e)))
 async def main():
     plat=call("POST","/api/platform/login",{"password":"pp-123456"})["token"]
@@ -24,11 +24,11 @@ async def main():
         pos=await (await b.new_context(viewport={"width":1440,"height":900})).new_page(); watch(pos)
         await pos.goto(B); await pin(pos,"1111")
         # Boshqaruv → Yetkazib berish sozlamalari
-        await pos.click('nav.tabs button[data-v="admin"]'); await pos.click('[data-a="atab"][data-v="delivery"]'); await pos.wait_for_selector('#d-enabled')
+        await pos.click('nav.snav button[data-v="admin"]'); await pos.click('[data-a="atab"][data-v="delivery"]'); await pos.wait_for_selector('#d-enabled')
         await pos.check('#d-enabled'); await pos.fill('#d-address','Navoiy sh., Navoiy ko\'chasi 12'); await pos.fill('#d-description','Milliy taomlar: osh, somsa, sho\'rva')
         await pos.select_option('#d-delivery_by','own'); await pos.fill('#d-delivery_fee','8000'); await pos.fill('#d-min_order','30000'); await pos.click('[data-a="saveDlv"]'); await pos.wait_for_timeout(700)
         await pos.screenshot(path=f"{OUT}/01-pos-delivery-settings.png", full_page=True)
-        assert await pos.query_selector('nav.tabs button[data-v="delivery"]'), "Yetkazish bo'limi menyuda yo'q"
+        assert await pos.query_selector('nav.snav button[data-v="delivery"]'), "Yetkazish bo'limi menyuda yo'q"
         # Menyu: rasm qo'shish
         await pos.click('[data-a="atab"][data-v="products"]'); await pos.wait_for_selector('table.list')
         await pos.click('table.list tr:nth-child(2) [data-a="aedit"]'); await pos.wait_for_selector('.imgpick')
@@ -55,19 +55,19 @@ async def main():
         await m.click('#place'); await m.wait_for_selector('[data-a="testpay"]'); await m.screenshot(path=f"{OUT}/14-app-pay.png")
         await m.click('[data-a="testpay"]'); await m.wait_for_selector('.prog'); await m.screenshot(path=f"{OUT}/15-app-order-new.png")
         # POS: yangi buyurtma kassada
-        await pos.wait_for_selector('nav.tabs .nbadge', timeout=6000)
-        await pos.click('nav.tabs button[data-v="delivery"]'); await pos.wait_for_selector('.dcard.new'); await pos.screenshot(path=f"{OUT}/20-pos-board-new.png")
+        await pos.wait_for_selector('nav.snav .nbadge', timeout=6000)
+        await pos.click('nav.snav button[data-v="delivery"]'); await pos.wait_for_selector('.dcard.new'); await pos.screenshot(path=f"{OUT}/20-pos-board-new.png")
         await pos.click('.dcard.new [data-a="dAccept"]'); await pos.click('.modal [data-v="20"]'); await pos.wait_for_selector('.dcard.accepted')
         await pos.screenshot(path=f"{OUT}/21-pos-board-accepted.png")
-        await pos.click('nav.tabs button[data-v="kitchen"]'); await pos.wait_for_timeout(600); await pos.screenshot(path=f"{OUT}/22-kitchen-delivery.png")
+        await pos.click('nav.snav button[data-v="kitchen"]'); await pos.wait_for_timeout(600); await pos.screenshot(path=f"{OUT}/22-kitchen-delivery.png")
         ck=call("POST","/api/login",{"pin":"4444"})["token"]
         for it in call("GET","/api/kitchen",None,ck): call("POST",f"/api/items/{it['id']}/status",{"status":"ready"},ck)
-        await pos.click('nav.tabs button[data-v="delivery"]'); await pos.wait_for_selector('.dcard.ready', timeout=6000)
+        await pos.click('nav.snav button[data-v="delivery"]'); await pos.wait_for_selector('.dcard.ready', timeout=6000)
         await pos.click('.dcard.ready [data-a="dDispatch"]'); await pos.wait_for_selector('.dcard.on_way')
         await m.wait_for_timeout(5500); await m.screenshot(path=f"{OUT}/16-app-order-onway.png", full_page=True)
         await pos.click('.dcard.on_way [data-a="dDelivered"]'); await pos.wait_for_selector('table.list:has-text("Yetkazildi")')
         await pos.screenshot(path=f"{OUT}/23-pos-board-done.png", full_page=True)
-        await pos.click('nav.tabs button[data-v="cash"]'); await pos.wait_for_selector('.grid-stats'); await pos.screenshot(path=f"{OUT}/24-cash-onlayn.png")
+        await pos.click('nav.snav button[data-v="cash"]'); await pos.wait_for_selector('.grid-stats'); await pos.screenshot(path=f"{OUT}/24-cash-onlayn.png")
         await m.wait_for_timeout(5500); await m.screenshot(path=f"{OUT}/17-app-delivered.png")
         await m.click('[data-a="back"]'); await m.wait_for_selector('#olist .li'); await m.screenshot(path=f"{OUT}/18-app-orders.png")
         await b.close()

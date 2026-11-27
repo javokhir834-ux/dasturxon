@@ -11,7 +11,7 @@ def call(method, path, body=None, tok=None):
 def watch(pg, n): pg.on("console", lambda m: m.type == "error" and errors.append(f"{n}: {m.text}")); pg.on("pageerror", lambda e: errors.append(f"{n}: {e}"))
 async def pin(page, code):
     for d in code: await page.click(f'.pad button[data-k="{d}"]')
-    await page.wait_for_selector("header.top", timeout=5000)
+    await page.wait_for_selector("aside.side", timeout=5000)
 async def main():
     plat = call("POST", "/api/platform/login", {"password": "pp-123456"})["token"]
     call("POST", "/api/platform/businesses/1/subscription", {"product": "delivery", "enabled": True, "paid_until": "2027-12-31"}, plat)
@@ -29,7 +29,7 @@ async def main():
         # ---- Tez sotuv
         pos = await (await b.new_context(viewport={"width": 1440, "height": 900})).new_page(); watch(pos, "pos")
         await pos.goto(B); await pin(pos, "2222")
-        await pos.click('nav.tabs button[data-v="counter"]'); await pos.wait_for_selector("#cq")
+        await pos.click('nav.snav button[data-v="counter"]'); await pos.wait_for_selector("#cq")
         await pos.fill("#cq", "4780011112222"); await pos.press("#cq", "Enter"); await pos.wait_for_selector(".clines .line")
         await pos.fill("#cq", "Olma"); await pos.wait_for_timeout(200); await pos.click(f'.ctile[data-id="{olma["id"]}"]')
         await pos.wait_for_selector('.modal input[name="kg"]'); await pos.fill('.modal input[name="kg"]', "1.34"); await pos.click('.modal [data-m="ok"]')
@@ -58,7 +58,7 @@ async def main():
         await m.click("#place"); await m.wait_for_selector('[data-a="testpay"]'); await m.click('[data-a="testpay"]'); await m.wait_for_selector(".prog")
         oid = int(m.url.split("/")[-1])
         # ---- POS: o'zgartirish
-        await pos.click('nav.tabs button[data-v="delivery"]'); await pos.wait_for_selector(".dcard.new")
+        await pos.click('nav.snav button[data-v="delivery"]'); await pos.wait_for_selector(".dcard.new")
         await pos.screenshot(path=f"{OUT}/02-board-shop.png")
         await pos.click('.dcard.new [data-a="dAdjust"]'); await pos.wait_for_selector('.modal select[name="a1"]')
         await pos.fill('.modal input[name="w0"]', "400")
