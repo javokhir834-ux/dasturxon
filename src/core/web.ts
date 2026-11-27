@@ -13,6 +13,8 @@ import * as monitor from './monitor.ts';
 const PUBLIC = path.join(ROOT, 'public');
 const MIME: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
+// Xarita fonlari: OpenStreetMap (kam yuklama uchun). Ommaviy ishga tushishda o'z tile server: MAP_TILE_HOST=https://tiles.domen.uz
+const MAP_TILES = process.env.MAP_TILE_HOST || 'https://tile.openstreetmap.org';
 const SPA = ['app', 'courier']; // /app/* va /courier/* — o'z index.html i
 const VERSION: string = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 
@@ -51,7 +53,7 @@ export function buildServer(ctx: Ctx): FastifyInstance {
   app.addHook('onRequest', async (req, reply) => {
     reply.header('X-Content-Type-Options', 'nosniff').header('X-Frame-Options', 'DENY').header('Referrer-Policy', 'same-origin')
       .header('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(self)')
-      .header('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+      .header('Content-Security-Policy', `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: ${MAP_TILES}; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`);
     if (config.MODE === 'cloud') reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     if (req.url.startsWith('/api/sync/push') || req.url === '/api/health') return; // health — monitoring va ilovalar tez-tez tekshiradi
     const ip = clientIp(req.raw);

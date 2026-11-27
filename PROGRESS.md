@@ -377,7 +377,18 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
   ~1.9 s, sessiyada bir marta, bosilsa o'tib ketadi, "kamroq harakat" sozlamasida qisqa. Uchala ilovada (`data-name` — ilova nomi).
 - **Mobil ilova rasmlari:** `mobile/brand-assets.py` — ikonkalar (oddiy, yumaloq, adaptiv old/fon qatlam), Android va iOS splash rasmlari ko'k brendda qayta chizildi
   (195 ta fayl, eski yashil "F" logo o'rniga). `brand.json` `color` → `#1D6BFF`.
-- **Keyingi bosqich:** 4 — xarita (mijoz kuzatuvi, kuryer marshruti; O'zbekistondagi tile server va CSP).
+- **4-bosqich — xarita (tugadi):** `public/minimap.js` — kutubxonasiz yengil xarita: OpenStreetMap plitkalari, belgilar (restoran, uy, kuryer — pulslaydi,
+  siz, joy yorlig'i), punktir yo'l chizig'i; qayta chaqirilganda plitkalar qolib, belgilar silliq suriladi (`MiniMap.keep` — poll qayta chizganda DOM saqlanadi).
+  Qorong'i rejim (kuryer) — plitkalar CSS filtr bilan. CARTO endi API kalit talab qiladi — shuning uchun OSM.
+  - Mijoz buyurtma sahifasi: tepada jonli xarita (restoran, uy, kuryer joylashuvi; 5 s yangilanadi), holat kartasi ustiga chiqadi.
+  - Kuryer faol buyurtma kartasi: qorong'i xarita (o'zi, restoran, mijoz; olgach — restoran→mijoz chizig'i).
+  - Mijoz `#map`: barcha joylar xaritada (toifa rangida yorliq, bosilsa menyu), toifa filtri.
+  - Server: `placeView` va mijoz buyurtmasida joy `lat/lng` (`place_lat/place_lng`), kuryer `meView` da `lat/lng`. CSP `img-src` ga plitka hosti
+    (`MAP_TILE_HOST`, standart `https://tile.openstreetmap.org`); ilovada `DX_CONFIG.tiles` bilan o'z serverga o'tkaziladi.
+  - **Ishga chiqishdan oldin:** OSM bepul serveri katta yuklama uchun emas (foydalanish siyosati) — o'z tile server yoki pullik provayder (`MAP_TILE_HOST`, `tiles`).
+- **Mijoz bosh sahifasi boyitildi:** sarlavhada Xarita tugmasi, toifalar to'liq rangda (xira emas) + 8-plitka "Xarita", "Yaqin atrofda" (joylashuv bo'lsa
+  masofa bo'yicha) + "Xaritada", joy kartalarida masofa, "Joylashuvni yoqing" kartasi (ruxsat bo'lsa jim aniqlanadi), "Siz uchun" ro'yxati.
+- Mijoz kuryer kartasi: yo'l-yo'lakay Yandex havolasi olib tashlandi (xarita ilovaning o'zida), reyting qatori bir qatorda.
 
 ## 11-etap (taklif) — pilotdan keyin
 - Pilot fikrlari bo'yicha tuzatishlar; restoran o'z muqova rasmini yuklashi; promokodlar va referal; mijoz manzillar daftari.

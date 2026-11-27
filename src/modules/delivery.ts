@@ -118,7 +118,7 @@ export default function delivery(ctx: Ctx) {
   route('POST', '/api/c/logout', null, ({ req }) => { const h = req.headers.authorization || ''; if (h.startsWith('Bearer ')) db.prepare('DELETE FROM app_sessions WHERE token_hash=?').run(tokHash(h.slice(7))); return { ok: true }; });
 
   const isOpenPlace = (b: number) => operating(b) && ext.placeAllowed(b); // 9-etap: dorixona litsenziyasi
-  const placeView = (b) => { const s = settingsOf(b.id); return { pickup: !!s.pickup, code: b.code, name: b.name, type: s.place_type, address: s.address, description: s.description, min_order: s.min_order, delivery_fee: s.delivery_fee, prep_minutes: s.prep_minutes, open: operating(b.id) }; };
+  const placeView = (b) => { const s = settingsOf(b.id); return { pickup: !!s.pickup, code: b.code, name: b.name, type: s.place_type, address: s.address, description: s.description, min_order: s.min_order, delivery_fee: s.delivery_fee, prep_minutes: s.prep_minutes, open: operating(b.id), lat: s.lat, lng: s.lng }; }; // lat/lng — ilovadagi xarita
   route('GET', '/api/c/places', null, ({ url }) => {
     const type = url.searchParams.get('type');
     return db.prepare('SELECT b.id, b.name, b.code FROM businesses b JOIN delivery_settings s ON s.business_id=b.id WHERE s.enabled=1 ORDER BY b.name').all()
@@ -217,7 +217,7 @@ export default function delivery(ctx: Ctx) {
   const publicOrder = (o) => {
     const b = db.prepare('SELECT name, code FROM businesses WHERE id=?').get(o.business_id);
     const { dirty, commission, commission_percent, pos_order_id, settlement_id, offer_courier_id, offer_expires, offer_declined, handover_code, code_attempts, courier_info, pos_pending, ...rest } = o;
-    return { ...rest, place: b?.name, place_code: b?.code, place_type: settingsOf(o.business_id).place_type, ...ext.publicExtra(o) }; // place_type — ilovada joy fotosi
+    return { ...rest, place: b?.name, place_code: b?.code, place_type: settingsOf(o.business_id).place_type, place_lat: settingsOf(o.business_id).lat, place_lng: settingsOf(o.business_id).lng, ...ext.publicExtra(o) }; // place_type — ilovada joy fotosi
   };
   route('GET', '/api/c/orders', null, ({ req }) => {
     const u = appUser(req);

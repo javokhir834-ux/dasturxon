@@ -85,7 +85,9 @@ const tabbar = () => `<nav class="tabbar">${TABS.map(([k, i, l]) => `<button cla
 const screen = (html, tabs = true) => {
   const me = S.st?.me, key = [S.token ? 1 : 0, S.tab, me?.status, S.st?.order?.courier_status, S.st?.offer?.id, S.regStep].join('|');
   const still = key === S.lastKey; S.lastKey = key;
+  const oldMap = $('#kmap'); // xarita plitkalari har 3 s qayta yuklanmasin
   $('#app').innerHTML = `<div class="scr ${still ? 'still' : ''}">${html}</div>${tabs ? tabbar() : ''}`;
+  MiniMap.keep(oldMap, '#kmap');
 };
 const title = (t, right = '') => `<div class="row sb" style="margin:0 4px 14px"><h1 class="h1">${t}</h1>${right}</div>`;
 const logoutBtn = () => `<button class="btn sm sec" data-a="logout">${ic('log-out', 16)} Chiqish</button>`;
@@ -166,6 +168,10 @@ function viewMain() {
     <span><span class="mut xs">Daraja</span><b style="color:var(--acc-hi)">${esc(me.level)}</b>${me.level_bonus ? `<span class="mut xs">+${money(me.level_bonus)} bonus</span>` : ''}</span></div>
     ${me.next_level ? `<p class="mut xs" style="margin:12px 4px 0">Keyingi daraja — <b>${esc(me.next_level.name)}</b>: ${me.next_level.min} ta buyurtma, reyting ${me.next_level.rating}+, bonus ${money(me.next_level.bonus)}/buyurtma.</p>` : ''}`;
   screen(html);
+  if (order) MiniMap.render($('#kmap'), { dark: true,
+    points: [{ id: 'place', kind: 'place', lat: order.place.lat, lng: order.place.lng }, { id: 'home', kind: 'home', lat: order.customer.lat, lng: order.customer.lng },
+      me.lat != null ? { id: 'me', kind: 'courier', lat: me.lat, lng: me.lng } : null],
+    line: ['picked', 'at_customer'].includes(order.courier_status) ? [[order.place.lat, order.place.lng], [order.customer.lat, order.customer.lng]] : me.lat != null ? [[me.lat, me.lng], [order.place.lat, order.place.lng]] : null });
   if (offer && !order) { $('#app').insertAdjacentHTML('beforeend', offerSheet(offer)); tickOffer(); }
 }
 function offerSheet(o) {
@@ -220,7 +226,8 @@ function tripCard(o) {
         <button class="btn bad" data-a="noshow" data-id="${o.id}">Mijoz olmadi</button>
         <span class="mut xs">Tartib bajarilsa yo'l haqingiz to'lanadi, taom sizda qoladi.</span></div></details>`;
   }
-  return `<div class="trip">${bar}<span class="col" style="gap:4px"><span class="k">${k}</span><b class="t">${t}</b><span class="mut sm">${a}</span></span>${body}
+  const hasMap = [o.place.lat, o.customer.lat].some((v) => v != null);
+  return `<div class="trip">${hasMap ? '<div id="kmap" class="kmap"></div>' : ''}${bar}<span class="col" style="gap:4px"><span class="k">${k}</span><b class="t">${t}</b><span class="mut sm">${a}</span></span>${body}
     <span class="mut xs" style="text-align:center">Haqingiz: <b style="color:#fff">${som(o.fee)}</b></span></div>`;
 }
 setInterval(() => { const t = $('#nstimer'); if (!t) return; const l = Math.max(0, new Date(t.dataset.at) - Date.now()); t.textContent = `${String(Math.floor(l / 60000)).padStart(2, '0')}:${String(Math.floor((l % 60000) / 1000)).padStart(2, '0')}`; }, 1000);

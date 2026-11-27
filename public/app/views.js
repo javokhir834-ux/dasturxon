@@ -48,16 +48,20 @@ function homeShell() {
   const addr = store.get('dx_addr') || '';
   page(`<div class="pad row sb">
       <button class="addr press" data-a="go" data-v="#cart"><span>Yetkazish manzili</span><b>${ic('map-pin', 17, { c: 'var(--acc)' })}${esc(addr ? addr.slice(0, 32) : 'Manzilni kiriting')}${ic('chevron-down', 16, { w: 2.6 })}</b></button>
-      <div class="row" style="gap:10px"><button class="circle press" data-a="go" data-v="#orders" aria-label="Buyurtmalar">${ic('receipt-text', 21)}</button>
+      <div class="row" style="gap:10px"><button class="circle press" data-a="go" data-v="#map" aria-label="Xarita">${ic('map', 21)}</button>
         <button class="circle press" data-a="go" data-v="#me" aria-label="Profil">${ic('user', 21)}</button></div></div>
     <div class="pad" style="margin-top:14px"><label class="field">${ic('search', 20, { c: 'var(--mut)' })}<input id="q" type="search" placeholder="Restoran, taom yoki dorixona" value="${esc(S.q)}" autocomplete="off">
       ${S.q ? `<button data-a="qclear" aria-label="Tozalash">${ic('x', 18, { c: 'var(--mut)' })}</button>` : ''}</label></div>
     <div id="home">${loading()}</div>`, { tab: '#' });
 }
+// Masofa: foydalanuvchi joylashuvi (S.geo) va joy koordinatalari bo'lsa
+const kmTo = (p) => { const g = S.geo; if (!g || p.lat == null) return null; const r = (x) => (x * Math.PI) / 180;
+  return 12742 * Math.asin(Math.sqrt(Math.sin(r(p.lat - g.lat) / 2) ** 2 + Math.cos(r(g.lat)) * Math.cos(r(p.lat)) * Math.sin(r(p.lng - g.lng) / 2) ** 2)); };
+const distTxt = (p) => { const d = kmTo(p); return d == null ? '' : d < 1 ? `${Math.round(d * 1000)} m` : `${d.toFixed(1).replace('.', ',')} km`; };
 const placeRow = (p) => `<button class="card prow press ${p.open ? '' : 'closed'}" data-a="go" data-v="#p/${esc(p.code)}">
   <span class="ph" style="${bgImg(coverUrl(p.type))}"></span>
   <span class="col grow" style="gap:3px"><b>${esc(p.name)}</b><span class="mut sm">${esc(tp(p.type).n)}${p.description ? ' · ' + esc(p.description.slice(0, 40)) : ''}</span>
-    <span class="meta"><span>${ic('clock', 13)}${mins(p)} daq</span><span>${ic('bike', 13)}${p.delivery_fee ? money(p.delivery_fee) : 'Bepul'}</span>${p.open ? '' : '<span class="pill bad">Yopiq</span>'}</span></span></button>`;
+    <span class="meta"><span>${ic('clock', 13)}${mins(p)} daq</span><span>${ic('bike', 13)}${p.delivery_fee ? money(p.delivery_fee) : 'Bepul'}</span>${distTxt(p) ? `<span>${ic('map-pin', 13)}${distTxt(p)}</span>` : ''}${p.open ? '' : '<span class="pill bad">Yopiq</span>'}</span></span></button>`;
 function renderHome() {
   const box = $('#home'); if (!box) return;
   const all = S.places || [], q = S.q.trim().toLowerCase();
@@ -69,8 +73,8 @@ function renderHome() {
     return;
   }
   const count = (k) => all.filter((p) => p.type === k).length;
-  const tiles = TYPES.filter(([k]) => count(k)); // joyi bor turlar oldin, 8 taga to'ldirish uchun qolganlari "tez kunda"
-  const fill = TYPES.filter(([k]) => !count(k)).slice(0, Math.max(0, 8 - tiles.length));
+  const tiles = TYPES.filter(([k]) => count(k)).slice(0, 7); // joyi bor turlar oldin, 7 taga to'ldirish uchun qolganlari "tez kunda", 8-chi — Xarita
+  const fill = TYPES.filter(([k]) => !count(k)).slice(0, Math.max(0, 7 - tiles.length));
   const act = (S.orders || []).find((o) => ACTIVE.includes(o.status));
   const open = all.filter((p) => p.open);
   const banners = [
@@ -80,16 +84,21 @@ function renderHome() {
   box.innerHTML = `${act ? `<button class="card ocard press live" style="margin:16px 16px 0;width:calc(100% - 32px)" data-a="go" data-v="#order/${act.id}">
       <span class="ic-b">${ic(act.status === 'on_way' ? 'bike' : 'flame', 22)}</span><span class="col grow"><b>${ST[act.status][0]}</b><span class="mut sm">${esc(act.place)} · #${act.id}</span></span>${ic('chevron-right', 18, { c: '#C7C7CC' })}</button>` : ''}
     <div class="card svc stagger">${[...tiles, ...fill].map(([k, n, i, bg, fg]) => `<button class="press ${count(k) ? '' : 'soon'}" data-a="${count(k) ? 'type' : 'soon'}" data-v="${k}">
-      <i style="background:${bg}">${ic(i, 27, { c: fg, w: 1.9 })}</i><span>${n}</span></button>`).join('')}</div>
+      <i style="background:${bg}">${ic(i, 27, { c: fg, w: 1.9 })}</i><span>${n}</span></button>`).join('')}
+      <button class="press" data-a="go" data-v="#map"><i style="background:#EFEFF4">${ic('map', 27, { c: '#3A3A40', w: 1.9 })}</i><span>Xarita</span></button></div>
     <div class="chips banners">${banners.map(([ph, s, t, to]) => `<button class="banner press" style="${bgImg(coverUrl(ph))}" ${to === 'deals' ? 'data-a="scroll" data-v="deals"' : to ? `data-a="type" data-v="${to}"` : ''}>
       <span class="t"><span>${esc(s)}</span><b>${esc(t)}</b></span></button>`).join('')}</div>
     ${S.deals?.length ? `<div class="sect" id="deals"><h2 class="h2">🌙 Kechki chegirmalar</h2></div><div class="chips near">${S.deals.slice(0, 12).map((d) => `<button class="card deal press" data-a="go" data-v="#p/${esc(d.place_code)}">
       <span class="ph" style="${d.product?.image ? bgImg(DX.asset(d.product.image)) : `background:${tp('restoran').bg}`}">${d.product?.image ? '' : ic('utensils-crossed', 30, { c: tp('restoran').fg })}<span class="off">−${d.percent}%</span></span>
       <b class="sm">${esc(d.product?.name || '')}</b><span class="mut xs">${esc(d.place)} · ${d.left} ta qoldi</span><span><s>${money(d.old_price)}</s> <b>${som(d.price)}</b></span></button>`).join('')}</div>` : ''}
-    ${open.length ? `<div class="sect"><h2 class="h2">Hozir ochiq</h2></div><div class="chips near">${open.slice(0, 8).map((p) => `<button class="card ncard press" data-a="go" data-v="#p/${esc(p.code)}">
+    ${open.length ? `<div class="sect row"><h2 class="h2">${S.geo ? 'Yaqin atrofda' : 'Hozir ochiq'}</h2><button class="link" data-a="go" data-v="#map">Xaritada</button></div>
+      <div class="chips near">${[...open].sort((a, b) => (kmTo(a) ?? 99) - (kmTo(b) ?? 99)).slice(0, 8).map((p) => `<button class="card ncard press" data-a="go" data-v="#p/${esc(p.code)}">
       <span class="ph" style="${bgImg(coverUrl(p.type))}"><span class="pill w">${ic('clock', 13)}${mins(p)} daq</span></span>
-      <span class="bd"><b>${esc(p.name)}</b><span class="mut sm">${esc(tp(p.type).n)} · ${p.delivery_fee ? money(p.delivery_fee) : 'Bepul yetkazish'}</span></span></button>`).join('')}</div>` : ''}
-    <div class="sect"><h2 class="h2">Barcha joylar</h2></div>
+      <span class="bd"><b>${esc(p.name)}</b><span class="meta mut"><span>${ic('bike', 13)}${p.delivery_fee ? money(p.delivery_fee) : 'Bepul'}</span>${distTxt(p) ? `<span>${ic('map-pin', 13)}${distTxt(p)}</span>` : `<span>${esc(tp(p.type).n)}</span>`}</span></span></button>`).join('')}</div>` : ''}
+    ${!S.geo && all.some((p) => p.lat != null) ? `<button class="card row press" style="margin:14px 16px 0;padding:12px 14px;width:calc(100% - 32px)" data-a="homeGeo">
+      <span class="ic-b" style="width:42px;height:42px;border-radius:12px;background:var(--acc-soft);color:var(--acc);display:flex;align-items:center;justify-content:center">${ic('locate-fixed', 22)}</span>
+      <span class="col grow" style="text-align:left"><b>Yaqin joylarni ko'rsataylikmi?</b><span class="mut sm">Joylashuvni yoqing — masofa va eng yaqinlari chiqadi</span></span>${ic('chevron-right', 18, { c: '#C7C7CC' })}</button>` : ''}
+    <div class="sect"><h2 class="h2">Siz uchun</h2></div>
     <div class="pad col stagger" style="gap:10px">${all.map(placeRow).join('') || emptyBox('store', "Hozircha joylar yo'q", "Tez orada restoran va do'konlar qo'shiladi")}</div>`;
 }
 
@@ -168,4 +177,18 @@ function quoteBox(q, choices, prepay) {
       ${pol.type === 'partial' ? `<label class="li"><input type="checkbox" id="payall" ${S.payOnline ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--acc)"><b class="grow" style="font-weight:600">Hammasini onlayn to'layman</b></label>` : ''}</div>
     <p class="mut row sm" style="margin:10px 20px;gap:8px;align-items:flex-start">${ic('info', 16)}<span>${esc(pol.reason)}${pol.type === 'partial' ? ` ${som(pol.prepay_amount)} hozir, ${som(pol.cash_amount)} kuryerga naqd.` : ''}
       ${prepay && prepay < q.total ? ` Hozir: ${som(prepay)}, kuryerga: ${som(q.total - prepay)}.` : ''}${!prepay ? ' To\'lov yetkazilganda kuryerga naqd.' : ''}</span></p>`;
+}
+
+// ---------- Joylar xaritasi (#map) ----------
+function viewMap() {
+  const all = (S.places || []).filter((p) => p.lat != null && (!S.mapType || p.type === S.mapType));
+  const kinds = TYPES.filter(([k]) => (S.places || []).some((p) => p.type === k && p.lat != null));
+  $('#app').innerHTML = `<div id="pmap" class="pmap"></div>
+    <div class="pmap-top col" style="gap:10px"><div class="row" style="gap:10px">${backBtn('#')}<span class="field glass grow" style="height:44px;border-radius:22px">${ic('map-pin', 18, { c: 'var(--acc)' })}<b style="font-size:15px">${all.length} ta joy xaritada</b></span></div>
+      <div class="chips" style="padding:0">${[['', 'Hammasi', 'layout-grid', '', '#111114'], ...kinds].map(([k, n, i, , fg]) => `<button class="chip press ${(S.mapType || '') === k ? 'on' : ''}" style="box-shadow:0 2px 8px rgba(0,0,0,.12);${(S.mapType || '') === k ? `background:${fg};color:#fff` : ''}" data-a="mapType" data-v="${k}">${ic(i, 16)}${n}</button>`).join('')}</div></div>
+    <div class="pmap-sheet glass row"><span class="col grow" style="gap:2px"><b style="font-size:17px">${S.mapType ? esc(tp(S.mapType).n) : 'Yaqin atrofdagi joylar'}</b><span class="mut sm">Belgini bosing — joy menyusi ochiladi</span></span>
+      <span style="min-width:40px;height:40px;border-radius:20px;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">${all.length}</span></div>${tabbar('#')}`;
+  MiniMap.render($('#pmap'), { pad: 70, zoom: 15,
+    points: [...all.map((p) => ({ id: p.code, kind: 'spot', href: '#p/' + p.code, lat: p.lat, lng: p.lng, icon: tp(p.type).i, color: tp(p.type).fg, label: p.name })),
+      S.geo ? { id: 'me', kind: 'me', lat: S.geo.lat, lng: S.geo.lng } : null] });
 }

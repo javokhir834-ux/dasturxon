@@ -93,7 +93,7 @@ export default function courier(ctx: Ctx) {
     return { id: c.id, phone: c.phone, name: c.name, vehicle: c.vehicle, vehicle_no: c.vehicle_no, status: c.status, status_reason: c.status_reason, myid_verified: !!c.myid_verified,
       test_score: c.test_score, test_passed: c.test_score >= 7, docs, deposit: c.deposit, online: !!c.online, rating: Math.round(c.rating * 100) / 100, ratings: c.ratings, completed: c.completed,
       level: lv.name, level_bonus: lv.bonus, next_level: LEVELS[LEVELS.indexOf(lv) + 1] || null, cash_limit: cashLimit(c), rating_warn: c.ratings >= 5 && c.rating < RATING_WARN,
-      probation_left: c.status === 'probation' ? Math.max(0, S('probation_orders') - c.completed) : 0, ...m };
+      probation_left: c.status === 'probation' ? Math.max(0, S('probation_orders') - c.completed) : 0, lat: c.lat, lng: c.lng, ...m }; // lat/lng — kuryer xaritasi
   };
 
   // Mijoz va restoran uchun kuryer ma'lumoti

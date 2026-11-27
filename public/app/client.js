@@ -49,7 +49,7 @@ async function viewHome() {
   homeShell();
   const [list, deals, orders] = await Promise.all([run(() => api('GET', '/api/c/places')), api('GET', '/api/c/deals').catch(() => []), S.token ? api('GET', '/api/c/orders').catch(() => null) : null]);
   if (!list) return;
-  S.places = list; S.deals = deals;
+  S.places = list; S.deals = deals; locate(false);
   if (orders) setOrders(orders);
   renderHome();
 }
@@ -86,6 +86,17 @@ async function loadQuote() {
   btn.textContent = prepay ? `To'lash · ${som(prepay)}` : `Buyurtma berish · ${som(q.total)}`;
 }
 
+// Foydalanuvchi joylashuvi (masofa, "Yaqin atrofda", xarita): ruxsat bo'lsa jim, aks holda faqat tugma bosilganda so'raladi
+function locate(ask) {
+  if (!navigator.geolocation) return ask && toast('Telefoningiz joylashuvni bermayapti', true);
+  const go2 = () => navigator.geolocation.getCurrentPosition((pos) => {
+    S.geo = { lat: +pos.coords.latitude.toFixed(6), lng: +pos.coords.longitude.toFixed(6), acc: Math.round(pos.coords.accuracy) };
+    store.set('dx_geo', S.geo); renderHome();
+  }, () => ask && toast('Joylashuvga ruxsat berilmadi', true), { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+  if (ask) return go2();
+  navigator.permissions?.query({ name: 'geolocation' }).then((p) => { if (p.state === 'granted') go2(); }).catch(() => {});
+}
+
 // ---------- Marshrut ----------
 function route() {
   clearInterval(S.poll); S.poll = null;
@@ -96,6 +107,7 @@ function route() {
   if (h === '#login') return viewLogin();
   if (h === '#orders') return viewOrders();
   if (h === '#me') return viewMe();
+  if (h === '#map') return S.places ? viewMap() : api('GET', '/api/c/places').then((l) => { S.places = l; viewMap(); }).catch((e) => toast(e.message, true));
   if (h === '#delete') return viewDelete();
   if ((m = /^#pay\/(\d+)$/.exec(h))) return viewPay(m[1]);
   if ((m = /^#claim\/(\d+)$/.exec(h))) { if (!S.token) { S.after = h; return go('#login'); } return viewClaim(m[1]); }
@@ -140,6 +152,8 @@ const A = {
   type: (el) => { S.type = el.dataset.v; S.q = ''; if (location.hash && location.hash !== '#') return go('#'); homeShell(); renderHome(); },
   qclear: () => { S.q = ''; homeShell(); renderHome(); },
   soon: () => toast("Bu toifa tez orada qo'shiladi"),
+  mapType: (el) => { S.mapType = el.dataset.v; viewMap(); },
+  homeGeo: () => locate(true),
   scroll: (el) => $('#' + el.dataset.v)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
   sec: (el) => { const t = $('#sec-' + el.dataset.v); if (t) window.scrollTo({ top: t.getBoundingClientRect().top + window.scrollY - 130, behavior: 'smooth' }); radioOn(el); },
   qty: async (el) => {
