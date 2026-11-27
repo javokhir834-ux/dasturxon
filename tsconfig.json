@@ -1,0 +1,19 @@
+{
+  // Faqat tur tekshiruvi (npm run check). Node 22.18+ .ts fayllarni o'zi ishga tushiradi — build yo'q.
+  "compilerOptions": {
+    "target": "es2023",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "strict": true,
+    "strictNullChecks": false,
+    "useUnknownInCatchVariables": false, // bosqichma-bosqich yoqiladi (PROGRESS.md)
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}

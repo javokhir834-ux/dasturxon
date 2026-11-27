@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ulanish</title>
+<script src="/dx-config.js"></script>
+<link rel="stylesheet" href="/styles.css">
+<style>
+  body { overflow: auto; user-select: auto; }
+  .wrap { max-width: 440px; margin: 0 auto; padding: max(24px, env(safe-area-inset-top)) 20px 24px; min-height: 100%; display: flex; flex-direction: column; justify-content: center; }
+  .logo { width: 72px; height: 72px; border-radius: 22px; background: var(--card2); display: grid; place-items: center; font-size: 36px; margin: 0 auto 14px; }
+  h1 { text-align: center; margin: 0 0 4px; } .sub { text-align: center; color: var(--muted); margin: 0 0 22px; }
+  .err { color: var(--danger); margin-top: 10px; min-height: 20px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap" id="w" hidden>
+  <div class="logo" id="ic">🍽</div>
+  <h1 id="nm"></h1>
+  <p class="sub" id="sb"></p>
+  <div class="panel">
+    <label for="srv">Server manzili</label>
+    <input id="srv" inputmode="url" autocomplete="url" placeholder="https://... yoki http://192.168.1.10:8080">
+    <p class="muted small" id="hint"></p>
+    <button class="btn primary block" id="go" style="min-height:52px;margin-top:8px">Ulanish</button>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+<script src="/launcher.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "dasturxon-mijoz",
+  "private": true,
+  "_izoh": "Kutubxonalar ../../node_modules da (mobile/ papkada npm install).",
+  "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/ios": "^8.6.0",
+    "@capacitor/push-notifications": "^8.1.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.0"
+  }
+}

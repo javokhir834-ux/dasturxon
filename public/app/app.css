@@ -148,3 +148,9 @@ html { background: #f6f3ee; }
 .ti { display: inline-flex; align-items: center; gap: 5px; }
 .ti svg { flex: none; }
 .empty .ic svg { display: inline-block; }
+/* 9-etap: kechki chegirma, olib ketish */
+.deals { display: flex; gap: 10px; overflow-x: auto; padding: 0 16px 14px; scrollbar-width: none; }
+.deal { flex: none; width: 160px; display: flex; flex-direction: column; gap: 4px; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px; }
+.deal .ph { height: 90px; border-radius: 10px; background: var(--card2) center/cover no-repeat; position: relative; }
+.deal .off { position: absolute; top: 6px; left: 6px; background: var(--warn); color: #1d1300; font-weight: 800; font-size: 12px; padding: 2px 7px; border-radius: 999px; }
+.opts.two { grid-template-columns: 1fr 1fr; }

@@ -31,7 +31,8 @@ fi
 echo "==> Foydalanuvchi va papkalar"
 id dasturxon >/dev/null 2>&1 || useradd --system --home "$APP" --shell /usr/sbin/nologin dasturxon
 mkdir -p "$APP" "$DATA" /var/backups/dasturxon
-rsync -a --delete --exclude data --exclude .env --exclude deploy/local "$SRC"/ "$APP"/
+rsync -a --delete --exclude data --exclude .env --exclude deploy/local --exclude node_modules --exclude mobile "$SRC"/ "$APP"/
+(cd "$APP" && npm ci --omit=dev --no-audit --no-fund)
 
 if [ ! -f "$APP/.env" ]; then
   PW="$(head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 16)"

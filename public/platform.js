@@ -21,14 +21,14 @@ const PLATFORM_UI = (() => {
   };
   const shell = (title, right, body) => {
     document.body.classList.add('scroll');
-    $('#app').innerHTML = `<div class="shell"><header class="top"><div class="brand"><span class="dot"></span>Dasturxon</div><span class="muted">${title}</span><div class="grow"></div>${right}</header>
+    $('#app').innerHTML = `<div class="shell"><header class="top"><div class="brand"><span class="dot"></span>FastHub</div><span class="muted">${title}</span><div class="grow"></div>${right}</header>
       <div class="page" id="pg">${body}</div></div>`;
   };
   const H = {}; // harakatlar
   const bind = () => { $('#app').onclick = (e) => { const el = e.target.closest('[data-p]'); if (el && H[el.dataset.p]) { e.preventDefault(); H[el.dataset.p](el); } }; };
   const back = '<a class="btn sm" href="#" data-p="toPos">← POS ga</a>';
   // 8-etap: platforma bo'limlari (harakatlari platadmin.js da)
-  const NAV = [['platBiz', 'Bizneslar'], ['platCouriers', '🛵 Kuryerlar'], ['platStats', '📊 Statistika'], ['platSettle', '💰 Hisob-kitob'], ['platDisputes', '⚖️ Nizolar'], ['platRefunds', '↩️ Qaytarish'], ['platRisk', "🚫 Qora ro'yxat"]];
+  const NAV = [['platBiz', 'Bizneslar'], ['platCouriers', '🛵 Kuryerlar'], ['platStats', '📊 Statistika'], ['platSettle', '💰 Hisob-kitob'], ['platDisputes', '⚖️ Nizolar'], ['platRefunds', '↩️ Qaytarish'], ['platRisk', "🚫 Qora ro'yxat"], ['platPharm', '💊 Dorixonalar']];
   const nav = (act) => `${back}<nav class="pnav">${NAV.map(([k, n]) => `<button class="btn sm ${k === act ? 'primary' : ''}" data-p="${k}">${n}</button>`).join('')}</nav>`;
   H.toPos = () => { document.body.classList.remove('scroll'); history.replaceState(null, '', location.pathname); boot(); };
 
@@ -219,6 +219,7 @@ const PLATFORM_UI = (() => {
       <div><label>Taklifga javob vaqti (soniya)</label><input name="offer_seconds" type="number" value="${st.offer_seconds ?? 30}"></div>
       <div><label>Kuryer qidirish radiusi (km)</label><input name="dispatch_radius_km" type="number" value="${st.dispatch_radius_km ?? 7}"></div>
       <div><label>Sinov davri (buyurtma)</label><input name="probation_orders" type="number" value="${st.probation_orders ?? 20}"></div>
+      <div><label class="chk"><input type="checkbox" name="pharmacy_enabled" ${String(st.pharmacy_enabled) === '1' ? 'checked' : ''}> Dorixonalar yoqilgan (yurist xulosasidan keyin)</label></div>
       <div><label>Shikoyat muddati (kun)</label><input name="dispute_days" type="number" value="${st.dispute_days ?? 2}"></div>
       <div><label>E'tiroz muddati (kun)</label><input name="appeal_days" type="number" value="${st.appeal_days ?? 3}"></div>
       <div><label>Kuryer jarimasi (2-ayb, so'm)</label><input name="dispute_fine" type="number" value="${st.dispute_fine ?? 20000}"></div></div>
@@ -227,7 +228,7 @@ const PLATFORM_UI = (() => {
       <div class="foot"><button class="btn" data-m="close">Bekor</button><button class="btn primary" data-m="ok">Saqlash</button></div>`);
     if (!v) return;
     try { await papi('ptoken', 'POST', '/api/platform/settings', { price_pos: Number(v.price_pos), price_delivery: Number(v.price_delivery), trial_days: Number(v.trial_days), grace_days: Number(v.grace_days), commission_percent: Number(v.commission_percent),
-      ...Object.fromEntries(['fund_percent', 'courier_min_fee', 'offer_seconds', 'dispatch_radius_km', 'probation_orders', 'dispute_days', 'appeal_days', 'dispute_fine'].map((k) => [k, Number(v[k])])), ...(v.new_password ? { new_password: v.new_password } : {}) }); platform(); toast('Saqlandi'); }
+      ...Object.fromEntries(['fund_percent', 'courier_min_fee', 'offer_seconds', 'dispatch_radius_km', 'probation_orders', 'dispute_days', 'appeal_days', 'dispute_fine'].map((k) => [k, Number(v[k])])), pharmacy_enabled: v.pharmacy_enabled ? 1 : 0, ...(v.new_password ? { new_password: v.new_password } : {}) }); platform(); toast('Saqlandi'); }
     catch (e) { toast(e.message, true); }
   };
 
@@ -236,6 +237,24 @@ const PLATFORM_UI = (() => {
   const VEHN = { piyoda: 'Piyoda', velosiped: 'Velosiped', moto: 'Moto', avto: 'Avto' };
   const DOCN = { passport: 'Pasport', selfie: 'Selfi', license: 'Guvohnoma', vehicle: 'Transport' };
   H.platBiz = () => platform();
+  // ---------- 9-etap: dorixonalar (litsenziya tekshiruvi) ----------
+  H.platPharm = async () => {
+    let list, st;
+    try { [list, st] = await Promise.all([papi('ptoken', 'GET', '/api/platform/pharmacies'), papi('ptoken', 'GET', '/api/platform/settings')]); } catch (e) { return toast(e.message, true); }
+    shell('Dorixonalar', nav('platPharm'), `${String(st.pharmacy_enabled) !== '1' ? '<div class="banner warn">Dorixona toifasi o\'chiq — yurist xulosasidan keyin Sozlamalar → "Dorixonalar yoqilgan".</div>' : ''}
+      <div class="panel"><h3>Dorixonalar</h3><p class="muted small">Ilovada faqat retseptsiz dorilar. Litsenziya raqamini davlat reestrida tekshirib, tasdiqlang.</p>
+      <table class="list"><tr><th>Dorixona</th><th>Litsenziya</th><th>Muddati</th><th>Holat</th><th></th></tr>
+      ${list.map((x) => `<tr><td><b>${esc(x.name)}</b><div class="muted small">kod ${esc(x.code)}</div></td><td>${esc(x.license_no || '—')}</td><td>${esc(x.license_until || '—')}</td>
+        <td>${x.visible ? '<span class="chip ok">Ilovada</span>' : `<span class="chip warn">${esc(x.reason)}</span>`}${x.verified ? ' <span class="chip info">tasdiqlangan</span>' : ''}</td>
+        <td class="right">${x.verified ? `<button class="btn sm" data-p="pharmSet" data-id="${x.id}" data-v="0">Bekor qilish</button>` : `<button class="btn sm primary" data-p="pharmSet" data-id="${x.id}" data-v="1" ${x.license_no ? '' : 'disabled'}>Tasdiqlash</button>`}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Hali dorixona yo\'q</td></tr>'}</table></div>`);
+    bind();
+  };
+  H.pharmSet = async (el) => {
+    const note = el.dataset.v === '1' ? prompt("Izoh (masalan: reestrda tekshirildi)") : prompt('Bekor qilish sababi');
+    if (note == null) return;
+    try { await papi('ptoken', 'POST', `/api/platform/pharmacies/${el.dataset.id}`, { verified: el.dataset.v === '1', note }); toast('Saqlandi'); } catch (e) { return toast(e.message, true); }
+    H.platPharm();
+  };
   H.platCouriers = async () => {
     let list, fund;
     try { [list, fund] = await Promise.all([papi('ptoken', 'GET', '/api/platform/couriers'), papi('ptoken', 'GET', '/api/platform/fund')]); } catch (e) { return toast(e.message, true); }

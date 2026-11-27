@@ -3,19 +3,26 @@
 Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 
 ## Holat
-- **Tugagan:** 1-etap — POS yadro, 2-etap — Ofis, 3-etap — Xodimlar va mijozlar, 4-etap — Ko'p biznes va obuna, 5-etap — Bulut, 6-etap — Mijoz ilovasi, 7-etap — Kuryer ilovasi (hammasi 2026-11-24)
-- **Keyingi:** 8-etap — Platforma admin (hisob-kitob, nizolar, qora ro'yxat)
+- **Tugagan:** 1–9 etaplar va 8.5 (qayta qurish: TypeScript + Fastify, 3 mobil ilova, push). 9-etap — dorixona, do'kon, tez sotuv, olib ketish, kechki chegirma (2026-11-25)
+- **Brend:** FastHub Uz (2026-11-25) — ilovalar FastHub Uz / FastHub Kuryer / FastHub Biznes, paket ID `uz.fasthub.*`. Ichki kod nomi `dasturxon`.
+- **Keyingi:** 10-etap — Ishga chiqarish (pastda reja). Texnik qarz — "8.5" bo'limida.
 
-## Arxitektura
-- Node.js 22+, tashqi paketlarsiz. Server: `server.js` (marshrutlar `route(method, pattern, roles, handler)`).
-- Baza: `node:sqlite` → `data/db.sqlite`. Sxema va namuna ma'lumotlar: `db.js` (`CREATE TABLE IF NOT EXISTS`).
-  Yangi ustunlar uchun keyingi etaplarda `ALTER TABLE` migratsiyasi qo'shilsin (try/catch bilan).
-- Real-time: SSE `/api/stream?token=` → `change` hodisasi `{type: orders|kitchen|menu|shift}`. Mijoz qayta yuklab oladi.
-- Frontend: `public/` (build'siz SPA). `app.js`: `A.*` — tugma harakatlari (`data-a`), `view*` — ekranlar, `modal()` — oynalar.
-  Dizayn tokenlari `styles.css` boshida (umumiy, brendsiz).
-- Har bir jadvalda `business_id` bor (hozircha 1). Multi-tenant uchun tayyor.
-- Pul: so'mda, INTEGER. Vaqt: ISO string.
-- Rollar: admin, kassir, ofitsiant, oshpaz. PIN 4 raqam (sha256 + salt). Sessiyalar xotirada (server qayta ishga tushsa, qayta kiriladi).
+## Arxitektura (8.5 dan boshlab)
+- **Server:** Node.js 22.18+ TypeScript'ni o'zi ishga tushiradi (build yo'q): `npm start` = `node src/server.ts`. Tur tekshiruvi: `npm run check` (tsc).
+  HTTP — **Fastify 5**, tekshiruv — **Zod 4** (`ctx.parse(schema, body)`) yoki eski `ctx.int/str`. Kutubxonalar: `package.json` (faqat fastify, zod).
+- **Tuzilma:**
+  - `src/server.ts` (ishga tushirish), `src/app.ts` (yig'ish), `src/core/` — config, db, http (HttpError/fail/int/str/parse), auth (rollar, sessiya, audit),
+    realtime (SSE), images, context (Ctx, `route()`), web (Fastify: CORS, xavfsizlik, limit, statik, xatolar).
+  - `src/services/` — tashqi xizmatlar adapterlari: sms, fiscal, printer, payments (Payme/Click), push (FCM).
+  - `src/modules/` — biznes modullari, **har etap bitta fayl**: `export default function nom(ctx: Ctx)` → `ctx.route(...)` bilan marshrut,
+    boshqa modullarga kerak funksiyalarni qaytaradi (`ctx.<nom>`). Tartib va ro'yxat: `src/modules/index.ts`.
+- **Baza:** `node:sqlite` → `data/db.sqlite` (lokal va bulut). Sxema: modul ichida `CREATE TABLE IF NOT EXISTS` + `addCol` (ALTER, try/catch). Qatorlar hozircha `any` (`Row`).
+- **Real-time:** POS — SSE (`/api/stream-ticket` → `/api/stream?ticket=`), mijoz/kuryer ilovalari — 3–5 s so'rov + push xabar.
+- **Frontend:** `public/` — build'siz vanilla JS (POS `/`, mijoz `/app`, kuryer `/courier`). `public/native.js` — mobil ilova ko'prigi (brauzerda ishlamaydi).
+- **Mobil ilovalar:** `mobile/` (Capacitor 8): `apps/mijoz|kuryer|biznes` (Android + iOS loyihalari), `build.mjs` (public → www + sozlama), `sync.mjs` (cap sync + ruxsatlar),
+  `brand.json` (nom, paket ID, server, push). APK — GitHub Actions (`.github/workflows/android.yml`). Batafsil: `mobile/README.md`.
+- Har jadvalda `business_id`. Pul — so'm, INTEGER. Vaqt — ISO. Muhim amallar `audit_log` ga. Rollar: admin, menejer, kassir, ofitsiant, oshpaz, omborchi.
+- **Testlar:** `npm test` (= `bash tests/run_all.sh`, `tests/*.cjs`, har biri toza bazada), brauzer: `tests/ui*.py` (playwright). CI: `.github/workflows/test.yml`.
 
 ## 1-etapda qilingan
 - Zallar va stollar, stol holati (band, pre-chek, tayyor taom, yuborilmagan), stolni ko'chirish, cheklarni birlashtirish, chekni bo'lish (qisman soni bilan).
@@ -246,10 +253,67 @@ Keyingi etapni boshlashdan oldin shu faylni o'qing. Har etap oxirida yangilang.
 ## 8.1 — mijoz ilovasi dizayni
 - Mijoz ilovasi o'z yorug' temasiga o'tdi (`public/app/app.css` ichida tokenlar qayta belgilangan; telefon qorong'i rejimda bo'lsa — qorong'i variant). POS va kuryer dizayni o'zgarmadi.
 - Bosh sahifa: salomlashuv, qidiruv (nom/tavsif/tur bo'yicha, klientda), banner, rangli toifa plitkalari (har biri joylar soni bilan), katta joy kartalari (rangli muqova, vaqt, yetkazish narxi, ochiq/yopiq).
-- Yangi joy turlari: milliy, pizza, sushi, nonvoyxona, dokon (server `delivery.js` PLACE_TYPES, POS `public/delivery.js` PLACE_TYPES, mijoz `public/app/client.js` TYPES — uchalasi bir xil bo'lishi kerak). Dorixona va Gullar "tez kunda" plitkasi sifatida.
+- Yangi joy turlari: milliy, pizza, sushi, nonvoyxona, dokon (server `src/modules/delivery.ts` PLACE_TYPES, POS `public/delivery.js` PLACE_TYPES, mijoz `public/app/client.js` TYPES — uchalasi bir xil bo'lishi kerak). Gullar "tez kunda" plitkasi sifatida; dorixona 9-etapda haqiqiy turga aylandi (fotosi yo'q — restoran fotosi).
 - Joy sahifasi: rangli muqova, mahsulot rasmisiz bo'lsa joy turi rangidagi fon.
-- Toifa plitkalarida o'zimiz chizgan SVG ikonkalar (`public/app/icons.js`), joy kartasi va sahifasi muqovasida turga qarab haqiqiy foto (`public/app/img/places/<tur>.jpg`, Pexels litsenziyasi, manbalar `public/app/img/CREDITS.md`). Server `.jpg/.webp` MIME turlarini beradi.
+- Toifa plitkalarida o'zimiz chizgan SVG ikonkalar (`public/app/icons.js`), joy kartasi va sahifasi muqovasida turga qarab haqiqiy foto (`public/app/img/places/<tur>.jpg`, Pexels litsenziyasi, manbalar `public/app/img/CREDITS.md`). Server (`src/core/web.ts`) `.jpg/.webp` MIME turlarini beradi.
 - Keyin: restoran o'z muqova rasmini yuklashi (hozir tur bo'yicha umumiy foto).
 
-## 9-etap rejasi (keyingi)
-- Dorixona (faqat retseptsiz, litsenziya va yurist xulosasidan keyin), do'konlar (og'irlik/dona, almashtirish), kechki chegirma moduli (ortgan taom).
+## 8.5 — qayta qurish va mobil ilovalar (2026-11-24)
+- Backend `src/` ga ko'chirildi: CommonJS → ESM TypeScript, o'z HTTP serveri → Fastify 5 (marshrutlar o'zgarmadi — `ctx.route` adapteri), Zod yordamchisi,
+  `tsc --noEmit` xatosiz (`strict`, lekin `strictNullChecks` va `noImplicitAny` hozircha o'chiq). Barcha eski testlar o'zgarishsiz yashil.
+- Mobil ilova uchun server: CORS (`APP_ORIGINS`, standart `https://localhost, capacitor://localhost`), `GET /api/health`, SSE da CORS sarlavhalari.
+- **Push xabarlar** (`src/services/push.ts` FCM HTTP v1, JWT RS256 — paketsiz; `src/modules/push.ts` tokenlar):
+  yangi buyurtma → kassir/menejer/admin; holat o'zgarishi → mijoz; taklif → kuryer. `PUSH_MODE=off|test|fcm`, `FCM_SERVICE_ACCOUNT`. Yaroqsiz tokenlar o'chiriladi.
+- **3 ilova (Capacitor 8, Android + iOS):** birinchi ochilishda server manzili so'raladi (`/api/health` bilan tekshiriladi), `native.js` so'rovlarni serverga yo'naltiradi,
+  kuryerda fonda GPS (`@capacitor-community/background-geolocation`), push (`@capacitor/push-notifications`, `brand.json: push=true` bo'lganda), kamera — `<input capture>`.
+  Ikonka/splash: `apps/*/assets` → `npx capacitor-assets generate`.
+- Testlar: `tests/push.cjs` (16), `tests/ui8.py` (3 ilova brauzerda Capacitor soxtalashtirilib: server tanlash, CORS, SSE, buyurtma → kuryer).
+
+### 8.5 qarorlari
+- Native ilova = Capacitor (bitta veb kod, Android+iOS). Veb fayllar ilova ichida (oflayn ochiladi), API — tanlangan serverda.
+- Lokal restoran serveri `http://` (Wi-Fi) — ilovalarda cleartext/mixed content ruxsat. Ommaviy versiyada mijoz/kuryer faqat HTTPS bulutga ulanadi.
+- Paket ID: `uz.fasthub.app|courier|business` — nom tanlangach `brand.json` da o'zgartiriladi (Play'ga chiqishdan OLDIN, keyin o'zgarmaydi).
+
+### Texnik qarz (keyingi bosqichlar)
+- **PostgreSQL (bulut):** barcha so'rovlar sinxron `db.prepare()` — Postgres asinxron, ya'ni har handler `async/await` ga o'tadi (~4000 qator). Tavsiya: real yuk
+  (yuzlab biznes) paydo bo'lganda alohida etap; tayyorgarlik — yangi kodda SQL ni modul ichidagi kichik funksiyalarga yig'ish. Lokal POS SQLite'da qoladi.
+- `strictNullChecks` ni modulma-modul yoqish; qatorlarga tur (Zod/Drizzle sxemalari).
+- WebSocket (mijoz/kuryer so'rovlari o'rniga), Redis (ko'p server bo'lganda).
+- iOS: Mac + Xcode + Apple Developer ($99/yil) — `mobile/README.md`.
+- Payme/Click qaytish manzili ilovaga (deep link) — haqiqiy merchant ulanganda.
+
+## 9-etapda qilingan (2026-11-25)
+- **Yangi modullar:** `src/modules/retail.ts` (dorixona, do'kon, tez sotuv, buyurtmani o'zgartirish), `src/modules/deals.ts` (kechki chegirma).
+- **Joy turlari:** + `dorixona`, `dokon` (Boshqaruv → Yetkazib berish → Turi). Mijoz ilovasida 💊 Dorixona, 🛒 Do'kon filtrlari.
+- **Dorixona:** mahsulotda `rx` ("Retsept bilan beriladi") — ilovada umuman ko'rinmaydi va API ham rad etadi; kassada (Tez sotuv) faqat
+  "Retsept tekshirildi" belgisi bilan sotiladi va `audit_log` ga `rx_sale` yoziladi. Dorixona ilovada ko'rinishi uchun: platforma sozlamasi
+  `pharmacy_enabled=1` (yurist xulosasidan keyin) + restoran sozlamasida litsenziya raqami va muddati + platforma tasdig'i
+  (`pharmacy_licenses` — bulutda, lokal sinxron ustidan yozmaydi) + muddat o'tmagan. Platforma paneli → 💊 Dorixonalar.
+- **Do'kon:** mahsulot `sold_by` (dona|kg), `step_g` (ilovada qadam, masalan 250 g), `barcode`. Ilovada kg mahsulot og'irlik qadami bilan tanlanadi
+  (pozitsiya: `weight_g`, narx = kg narxi × gramm). Mijoz "mahsulot bo'lmasa": almashtirish / olib tashlash / qo'ng'iroq (`substitution`).
+  Qabul qilishdan oldin do'kon buyurtmani o'zgartiradi (`POST /api/delivery/orders/:id/adjust`: og'irlik, son, olib tashlash, almashtirish) —
+  summa qayta hisoblanadi, ortiqcha to'lov `refund_amount`, o'zgarishlar ro'yxati `changes` mijozga ko'rinadi + push. To'langandan qimmatga o'zgartirib bo'lmaydi.
+- **Tez sotuv** (POS → 🛒 Tez sotuv, `POST /api/counter/sale`): stolsiz kassa — qidiruv, shtrix-kod skaneri (Enter), tarozi (kg kiritish),
+  naqd/karta/Click/Payme, qaytim. Buyurtma `orders.type='counter'`, darhol yopiladi (ombor hisobdan chiqadi, smena hisobotiga tushadi).
+- **Olib ketish** (`mode='pickup'`): yetkazish narxi 0, manzil shart emas, kuryerga taklif qilinmaydi, doskada "🚶 Mijoz oldi". Sozlama `pickup`.
+- **Kechki chegirma** (`evening_deals`): kassir taom + soni + 10–90% + qachongacha (≤12 soat). Mijoz ilovasida bosh sahifada "🌙 Kechki chegirmalar"
+  va joy menyusida; narx 100 so'mga yaxlitlanadi; **faqat oldindan to'lov**; qolgan soni bekor qilinmagan buyurtmalardan hisoblanadi (bekor bo'lsa qaytadi).
+  Lokal serverli restoran: chegirma lokalda yaratiladi → bulutga sinxron (`evening_deals` SPEC da), buyurtmadagi `deal_id` lokalga tarjima qilinadi.
+- Testlar: `tests/retail.cjs` (45), `tests/ui9.py`. Jami API: 11 to'plam.
+
+### 9-etap qarorlari
+- Og'irlikli pozitsiya = 1 qator (qty=1, narx og'irlikka qarab) — ombor/hisobotlar o'zgarmadi. Texkarta (retsept) kg mahsulotga hali qo'llanmaydi.
+- Kechki chegirma faqat dona taomlarga; har taomga bitta faol chegirma.
+- Lokal serverli do'konda buyurtmani o'zgartirish hozircha o'chiq (bulutga uzatish kerak) — mijozga qo'ng'iroq.
+
+### 9-etap ochiq qolganlari
+- Dorixona: yurist xulosasi, litsenziya reestri bilan avtomatik tekshiruv (API bo'lsa), dori yo'riqnomasi maydoni.
+- `refund_amount` (qisman qaytarish) — platforma "Qaytarish" bo'limida qo'lda; Payme/Click qisman qaytarish API ulanganda avtomatik.
+- Tarozi bilan to'g'ridan ulanish (COM/USB) — hozir og'irlik qo'lda kiritiladi; chek printeri tez sotuvda — keyin.
+
+## 10-etap rejasi (keyingi) — Ishga chiqarish
+- Brend: nom, logo, paket ID (`mobile/brand.json`) → Google Play (3 ilova), ichki sinov (internal testing) → ochiq.
+- Play talablari: maxfiylik siyosati sahifasi, foydalanish shartlari (oferta), akkauntni o'chirish (mijoz/kuryer ilovasida), ma'lumotlar xavfsizligi formasi.
+- Firebase (push), haqiqiy SMS (Eskiz/Playmobile adapteri `src/services/sms.ts`), Payme/Click merchant (YaTT/MChJ), fiskal provayder.
+- VPS deploy (deploy/ skriptlar), domen + HTTPS, zaxira nusxa (har kuni, boshqa joyga), monitoring (health, xatolar), yuklama sinovi.
+- Pilot: 2–3 restoran + 1 do'kon Navoiyda, 5–10 kuryer; fikr-mulohaza bo'yicha tuzatishlar.

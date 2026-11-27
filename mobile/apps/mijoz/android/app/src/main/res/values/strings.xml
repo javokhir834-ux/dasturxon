@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FastHub Uz</string>
+    <string name="title_activity_main">FastHub Uz</string>
+    <string name="package_name">uz.fasthub.app</string>
+    <string name="custom_url_scheme">uz.fasthub.app</string>
+</resources>

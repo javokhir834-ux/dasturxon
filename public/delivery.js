@@ -4,7 +4,8 @@
 S.dlv = []; S.dlvNew = 0;
 const DST = { new: ['Yangi', 'info'], accepted: ['Tayyorlanmoqda', 'warn'], ready: ['Tayyor', 'ok'], on_way: ["Yo'lda", 'ok'], delivered: ['Yetkazildi', 'ok'],
   cancelled: ['Mijoz bekor qildi', 'danger'], rejected: ['Rad etildi', 'danger'], no_show: ['Mijoz olmadi', 'danger'], awaiting_payment: ["To'lov kutilmoqda", ''] };
-const PLACE_TYPES = [['restoran', 'Restoran'], ['milliy', 'Milliy taomlar'], ['fastfood', 'Fastfud'], ['pizza', 'Pitsa'], ['sushi', 'Sushi'], ['kafe', 'Kafe'], ['choyxona', 'Choyxona'], ['shirinlik', 'Shirinliklar'], ['nonvoyxona', 'Non va pishiriq'], ['dokon', "Do'konlar"]];
+const PLACE_TYPES = [['restoran', 'Restoran'], ['milliy', 'Milliy taomlar'], ['fastfood', 'Fastfud'], ['pizza', 'Pitsa'], ['sushi', 'Sushi'], ['kafe', 'Kafe'], ['choyxona', 'Choyxona'], ['shirinlik', 'Shirinliklar'], ['nonvoyxona', 'Non va pishiriq'], ['dorixona', 'Dorixona'], ['dokon', "Do'kon"]];
+const SUBST = { replace: "🔁 Yo'q bo'lsa — o'xshashiga almashtiring", remove: "✖ Yo'q bo'lsa — olib tashlang", call: "📞 Yo'q bo'lsa — qo'ng'iroq qiling" };
 const dlvOn = () => S.boot?.business?.delivery && S.boot.business.delivery.status !== 'disabled' && CASHR.includes(S.user?.role);
 
 // Ovozli signal — yangi buyurtma javobsiz qolmasin (planshet ovozi yoqilgan bo'lishi kerak)
@@ -52,7 +53,13 @@ function dcard(o) {
   const cline = hasC && c ? `<div class="cline">🛵 <b>${esc(c.name)}</b> ⭐${c.rating ?? '—'} · ${esc(c.vehicle || '')} ${esc(c.vehicle_no || '')} · <a href="tel:+${esc(c.phone)}">${fmtPhoneD(c.phone)}</a>
       <div class="muted small">${CST[c.status] || ''}${c.loc_at ? ` · GPS ${hhmm(c.loc_at)}` : ''}${c.lat != null ? ` <a target="_blank" rel="noopener" href="https://yandex.uz/maps/?pt=${c.lng},${c.lat}&z=16&l=map">xaritada</a>` : ''}</div></div>`
     : searching ? `<div class="cline searching">🔎 Kuryer qidirilmoqda${c.since ? ` · <span data-since="${c.since}">${ago(c.since)}</span>` : ''}</div>` : o.own_delivery ? '<div class="cline muted small">🚗 O\'zimiz yetkazamiz</div>' : '';
-  const actions = hasC ? {
+  const pickup = o.mode === 'pickup';
+  const adjustBtn = o.status === 'new' ? btn('dAdjust', "✏️ O'zgartirish", 'ghost') : '';
+  const actions = pickup ? {
+    new: btn('dAccept', 'Qabul qilish', 'primary') + btn('dReject', 'Rad etish', 'danger') + adjustBtn,
+    accepted: btn('dReady', 'Tayyor', 'primary') + btn('dReject', 'Rad etish', 'ghost'),
+    ready: btn('dDelivered', '🚶 Mijoz oldi', 'primary') + btn('dNoShow', 'Kelmadi', 'danger'),
+  }[o.status] || '' : hasC ? {
     accepted: btn('dReady', 'Tayyor', 'primary') + btn('dReject', 'Rad etish', 'ghost'),
     ready: '<span class="muted small">Kuryer plomba rasmini olib, buyurtmani oladi</span>',
     on_way: '<span class="muted small">Kuryer mijozga 4 xonali kod bilan topshiradi</span>',
@@ -60,7 +67,7 @@ function dcard(o) {
     accepted: btn('dReady', 'Tayyor') + btn('dOwn', "O'zimiz yetkazamiz", 'ghost'),
     ready: btn('dOwn', "O'zimiz yetkazamiz", 'primary'),
   }[o.status] || '' : {
-    new: btn('dAccept', 'Qabul qilish', 'primary') + btn('dReject', 'Rad etish', 'danger'),
+    new: btn('dAccept', 'Qabul qilish', 'primary') + btn('dReject', 'Rad etish', 'danger') + adjustBtn,
     accepted: btn('dReady', 'Tayyor') + btn('dDispatch', 'Kuryerga berildi', 'primary') + btn('dReject', 'Rad etish', 'ghost'),
     ready: btn('dDispatch', 'Kuryerga berildi', 'primary') + btn('dDelivered', 'Yetkazildi'),
     on_way: btn('dDelivered', 'Yetkazildi', 'primary') + btn('dNoShow', 'Mijoz olmadi', 'danger'),
@@ -68,7 +75,9 @@ function dcard(o) {
   return `<div class="dcard ${o.status}"><div class="row"><b>D-${o.id}</b><span class="muted small num" data-since="${o.created_at}">${ago(o.created_at)}</span><div class="grow"></div>${eta ? `<span class="chip">⏱ ${eta}</span>` : ''}</div>
     <div class="small" style="margin:6px 0">👤 ${esc(o.name || 'Mijoz')} · <a href="tel:+${esc(o.phone)}">${fmtPhoneD(o.phone)}</a></div>
     ${(o.risk || []).length ? `<div style="margin-bottom:4px">${o.risk.map((r) => `<span class="chip warn risk">⚠ ${esc(r)}</span>`).join('')}</div>` : ''}
-    <div class="small muted">📍 ${esc(o.address || '')}${mapLink(o)}</div>
+    <div class="small muted">${pickup ? '🚶 <b>Olib ketadi</b>' : `📍 ${esc(o.address || '')}${mapLink(o)}`}</div>
+    ${o.substitution ? `<div class="small" style="margin-top:4px">${SUBST[o.substitution] || ''}</div>` : ''}
+    ${o.refund_amount ? `<div class="small" style="margin-top:4px;color:var(--warn)">↩ Mijozga ${money(o.refund_amount)} qaytariladi</div>` : ''}
     ${o.note ? `<div class="small" style="margin-top:4px">💬 ${esc(o.note)}</div>` : ''}
     <div class="ditems">${o.items.map((i) => `<div class="r"><span>${esc(i.name)}${i.comment ? ` <i class="muted">(${esc(i.comment)})</i>` : ''}</span><b>× ${i.qty}</b></div>`).join('')}</div>
     <div class="row wrap" style="gap:6px"><b class="num">${som(o.total - (o.debt_amount || 0))}</b><div class="grow"></div>${payInfo(o)}</div>${cline}
@@ -87,6 +96,7 @@ async function viewDelivery(main) {
   const pend = today.filter((o) => o.pos_pending);
   main.innerHTML = `${pend.length ? `<div class="banner warn" style="margin:-16px -16px 14px">Kuryer yetkazgan, lekin chek yopilmagan (smena yopiq edi): ${pend.map((o) => `D-${o.id} <button class="btn sm" data-a="dClosePos" data-id="${o.id}">Chekni yopish</button>`).join(' ')}</div>` : ''}${!S.boot.shift ? '<div class="banner warn" style="margin:-16px -16px 14px">Smena yopiq — buyurtmani qabul qilish uchun Kassa bo\'limida smenani oching.</div>' : ''}
     ${['expired', 'blocked'].includes(sub.status) ? '<div class="banner danger" style="margin:-16px -16px 14px">Yetkazib berish obunasi faol emas — ilovada ko\'rinmaysiz.</div>' : ''}
+    <div class="row" style="margin-bottom:12px"><div class="grow"></div><button class="btn sm" data-a="dDeals">🌙 Kechki chegirmalar</button></div>
     <div class="dboard">${cols.map(([k, n]) => { const l = S.dlv.filter((o) => o.status === k); return `<section class="dcol"><h3>${n} <span class="chip ${DST[k][1]}">${l.length}</span></h3>${l.map(dcard).join('') || '<div class="muted small dempty">—</div>'}</section>`; }).join('')}</div>
     <div class="panel" style="margin-top:14px"><div class="row"><h3 style="margin:0">Bugun yakunlanganlar</h3><div class="grow"></div><span class="muted">Yetkazildi: <b>${done.filter((o) => o.status === 'delivered').length}</b> ta · ${som(sum)}</span></div>
       <table class="list" style="margin-top:8px"><tr><th>#</th><th>Vaqt</th><th>Mijoz</th><th>Holat</th><th>To'lov</th><th class="right">Summa</th></tr>
@@ -213,6 +223,10 @@ ADMIN_VIEWS.delivery = async (main, head) => {
     ${sub.status === 'disabled' ? '<p class="muted">Yetkazib berish xizmati hali ulanmagan. Ulash uchun platforma bilan bog\'laning (ega kabineti → tarif).</p>' : ''}
     <label class="chk"><input type="checkbox" id="d-enabled" ${s.enabled ? 'checked' : ''}> Ilovada ko'rinsin (yetkazib berish yoqilgan)</label>
     <label class="chk"><input type="checkbox" id="d-open" ${s.open ? 'checked' : ''}> Hozir buyurtma qabul qilinadi (vaqtincha to'xtatish uchun o'chiring)</label>
+    <label class="chk"><input type="checkbox" id="d-pickup" ${s.pickup ? 'checked' : ''}> Mijoz o'zi olib ketishi mumkin (yetkazish narxisiz)</label>
+    <div id="d-lic" ${s.place_type === 'dorixona' ? '' : 'hidden'}><div class="paygrid"><div><label>Dorixona litsenziyasi raqami</label><input id="d-license_no" maxlength="60" value="${esc(s.license_no || '')}"></div>
+      <div><label>Litsenziya amal qilish muddati</label><input id="d-license_until" type="date" value="${esc(s.license_until || '')}"></div></div>
+      <p class="muted small">Dorixona ilovada faqat platforma litsenziyani tekshirgandan keyin ko'rinadi. Retseptli dorilar ilovada sotilmaydi (Menyu → "Retsept bilan beriladi").</p></div>
     <label>Kim yetkazadi</label><select id="d-delivery_by"><option value="platform" ${s.delivery_by === 'platform' ? 'selected' : ''}>Platforma kuryerlari (avtomatik taqsimlanadi)</option>
       <option value="own" ${s.delivery_by === 'own' ? 'selected' : ''}>O'zimizning kuryerlar</option></select>
     <div class="row wrap" style="margin-top:8px"><span class="muted small grow">Restoran joylashuvi (kuryerlarni yaqinidan topish uchun): ${s.lat != null ? `<b>${s.lat.toFixed(5)}, ${s.lng.toFixed(5)}</b>` : '<b style="color:var(--warn)">belgilanmagan</b>'}</span>
@@ -233,6 +247,7 @@ ADMIN_VIEWS.delivery = async (main, head) => {
       ${num('expensive_limit', "Qimmat buyurtma chegarasi (so'm)", "Qaytarib bo'lmaydigan taomli bunday buyurtma — 100% oldindan")}</div>
     <p class="muted small">Qaysi taom qaytarib bo'lmaydi va qaysi biri ilovada sotiladi — Menyu bo'limida har bir taomda belgilanadi. Platforma komissiyasi taom summasidan olinadi.</p>
     <button class="btn primary" style="margin-top:12px" data-a="saveDlv">Saqlash</button></div>`;
+  $('#d-place_type').onchange = (e) => { $('#d-lic').hidden = e.target.value !== 'dorixona'; };
 };
 A.dlvGeo = (el) => {
   if (!navigator.geolocation) return toast("Brauzer joylashuvni bermayapti", true);
@@ -242,8 +257,48 @@ A.dlvGeo = (el) => {
 };
 A.saveDlv = () => run(async () => {
   const v = (k) => $('#d-' + k);
-  const body = { delivery_by: v('delivery_by').value, ...(S.dlvGeo ? S.dlvGeo : {}), enabled: v('enabled').checked, open: v('open').checked, place_type: v('place_type').value, address: v('address').value, description: v('description').value, prepay_mode: v('prepay_mode').value };
+  const body = { pickup: v('pickup').checked, license_no: v('license_no').value, license_until: v('license_until').value, delivery_by: v('delivery_by').value, ...(S.dlvGeo ? S.dlvGeo : {}), enabled: v('enabled').checked, open: v('open').checked, place_type: v('place_type').value, address: v('address').value, description: v('description').value, prepay_mode: v('prepay_mode').value };
   ['prep_minutes', 'min_order', 'delivery_fee', 'trusted_after', 'partial_percent', 'cash_limit', 'expensive_limit'].forEach((k) => { body[k] = Number(v(k).value) || 0; });
   S.dlvSettings = await api('POST', '/api/delivery/settings', body); S.dlvGeo = null;
   await loadBoot(); render(); toast('Saqlandi');
 });
+
+// ---------- 9-etap: buyurtmani o'zgartirish (mahsulot yo'q / og'irlik / almashtirish) ----------
+A.dAdjust = async (el) => {
+  const o = S.dlv.find((x) => x.id === Number(el.dataset.id)); if (!o) return;
+  const prods = (S.boot.products || []).filter((p) => p.active !== 0);
+  const kgOf = (it) => (it.weight_g ? `<input name="w${o.items.indexOf(it)}" type="number" step="10" min="10" value="${it.weight_g}" style="width:110px"> g` : '');
+  const v = await modal(`<h2>D-${o.id} · o'zgartirish</h2><p class="muted small">${SUBST[o.substitution] || "Mijoz tanlovi ko'rsatilmagan"}. Qabul qilishdan oldin o'zgartiring — mijozga xabar boradi, ortiqcha to'lov qaytariladi.</p>
+    <table class="list">${o.items.map((it, i) => `<tr><td>${esc(it.name)}${it.weight_g ? '' : ` × ${it.qty}`}</td><td>${kgOf(it)}</td>
+      <td><select name="a${i}"><option value="">— o'zgarmaydi —</option><option value="remove">Olib tashlash</option>${prods.filter((p) => p.id !== it.product_id).map((p) => `<option value="${p.id}">→ ${esc(p.name)} (${money(p.price)}${p.sold_by === 'kg' ? '/kg' : ''})</option>`).join('')}</select></td></tr>`).join('')}</table>
+    <div class="foot"><button class="btn" data-m="close">Bekor</button><button class="btn primary" data-m="ok">Saqlash</button></div>`, { wide: true });
+  if (!v) return;
+  const items = [];
+  o.items.forEach((it, i) => {
+    const a = v['a' + i], w = Number(v['w' + i]);
+    if (a === 'remove') items.push({ i, remove: true });
+    else if (a) items.push({ i, replace_product_id: Number(a), ...(w ? { weight_g: w } : {}) });
+    else if (it.weight_g && w && w !== it.weight_g) items.push({ i, weight_g: w });
+  });
+  if (!items.length) return;
+  await run(async () => { await api('POST', `/api/delivery/orders/${o.id}/adjust`, { items }); toast("O'zgartirildi, mijozga xabar yuborildi"); await loadDlv(false); renderView(); });
+};
+
+// ---------- 9-etap: kechki chegirma ----------
+A.dDeals = async () => {
+  const list = await api('GET', '/api/deals').catch((e) => (toast(e.message, true), null)); if (!list) return;
+  const prods = (S.boot.products || []).filter((p) => p.sold_by !== 'kg');
+  const end = new Date(Date.now() + 3 * 36e5); const until = `${String(end.getHours()).padStart(2, '0')}:00`;
+  const v = await modal(`<h2>🌙 Kechki chegirma</h2><p class="muted small">Kun oxirida ortgan taomni chegirma bilan soting: mijoz ilovasida alohida bo'limda ko'rinadi, faqat oldindan to'lov.</p>
+    ${list.length ? `<table class="list">${list.map((d) => `<tr><td>${esc(d.product?.name || '')}</td><td>-${d.percent}% · ${money(d.price)}</td><td>${d.sold}/${d.qty_total} sotildi</td>
+      <td class="muted small">${hhmm(d.ends_at)} gacha</td><td>${d.live ? `<button class="btn sm danger" data-m="val" data-v="stop:${d.id}">To'xtatish</button>` : '<span class="chip">tugagan</span>'}</td></tr>`).join('')}</table>` : ''}
+    <h3 style="margin-top:14px">Yangi chegirma</h3>
+    <label>Taom</label><select name="product_id">${prods.map((p) => `<option value="${p.id}">${esc(p.name)} — ${money(p.price)}</option>`).join('')}</select>
+    <div class="paygrid"><div><label>Soni</label><input name="qty" type="number" min="1" value="5"></div><div><label>Chegirma %</label><input name="percent" type="number" min="10" max="90" value="40"></div>
+      <div><label>Qachongacha</label><input name="until" type="time" value="${until}"></div></div>
+    <div class="foot"><button class="btn" data-m="close">Yopish</button><button class="btn primary" data-m="ok">E'lon qilish</button></div>`, { wide: true });
+  if (!v) return;
+  if (typeof v === 'string' && v.startsWith('stop:')) { await run(() => api('POST', `/api/deals/${v.slice(5)}/stop`)); toast("To'xtatildi"); return A.dDeals(); }
+  const r = await run(() => api('POST', '/api/deals', { product_id: Number(v.product_id), qty: Number(v.qty), percent: Number(v.percent), until: v.until }));
+  if (r) { toast(`E'lon qilindi: ${money(r.price)} so'm (${r.qty_total} ta)`); A.dDeals(); }
+};

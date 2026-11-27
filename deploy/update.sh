@@ -7,7 +7,8 @@ SRC="$(cd "$(dirname "$0")/.." && pwd)"
 APP=/opt/dasturxon
 f=$(ls -t /var/lib/dasturxon/backups/db-*.sqlite 2>/dev/null | head -1 || true)
 [ -n "$f" ] && cp "$f" "/var/backups/dasturxon/yangilashdan-oldin-$(date +%F-%H%M).sqlite"
-rsync -a --delete --exclude data --exclude .env "$SRC"/ "$APP"/
+rsync -a --delete --exclude data --exclude .env --exclude node_modules --exclude mobile "$SRC"/ "$APP"/
+(cd "$APP" && npm ci --omit=dev --no-audit --no-fund)
 chown -R dasturxon:dasturxon "$APP"
 cp "$APP/deploy/dasturxon.service" /etc/systemd/system/dasturxon.service
 systemctl daemon-reload && systemctl restart dasturxon

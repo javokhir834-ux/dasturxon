@@ -1,0 +1,9 @@
+{
+  "_izoh": "Brend: nom, paket ID, standart server. O'zgartirgach: node build.mjs && node sync.mjs (GitHub Actions o'zi qiladi). Paket ID Google Play'ga chiqqandan keyin o'zgarmaydi!",
+  "name": "FastHub",
+  "fullName": "FastHub Uz",
+  "idPrefix": "uz.fasthub",
+  "server": "",
+  "push": false,
+  "color": "#0f1714"
+}
